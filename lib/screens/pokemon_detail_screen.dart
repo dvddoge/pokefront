@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../widgets/animated_counter.dart';
+import '../widgets/banner_pattern_painter.dart';
 
 class PokemonDetailScreen extends StatefulWidget {
   final int pokemonId;
@@ -19,13 +20,37 @@ class PokemonDetailScreen extends StatefulWidget {
   _PokemonDetailScreenState createState() => _PokemonDetailScreenState();
 }
 
-class _PokemonDetailScreenState extends State<PokemonDetailScreen> {
+class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTickerProviderStateMixin {
   late Future<Map<String, dynamic>> _pokemonDetailFuture;
+  late AnimationController _bannerAnimationController;
+  late Animation<double> _floatingAnimation;
 
   @override
   void initState() {
     super.initState();
     _pokemonDetailFuture = fetchPokemonDetail(widget.pokemonId);
+    
+    // Configurando a animação do banner
+    _bannerAnimationController = AnimationController(
+      duration: Duration(seconds: 3),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _floatingAnimation = Tween<double>(
+      begin: -10.0,
+      end: 10.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _bannerAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _bannerAnimationController.dispose();
+    super.dispose();
   }
 
   Future<Map<String, dynamic>> fetchPokemonDetail(int id) async {
@@ -204,43 +229,40 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> {
                     background: Stack(
                       fit: StackFit.expand,
                       children: [
-                        Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topRight,
-                              end: Alignment.bottomLeft,
-                              colors: [typeColor, secondaryColor],
-                            ),
-                          ),
-                        ),
-                        Positioned.fill(
-                          child: ShaderMask(
-                            shaderCallback: (rect) {
-                              return LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [Colors.black, Colors.transparent],
-                              ).createShader(Rect.fromLTRB(0, 0, rect.width, rect.height));
-                            },
-                            blendMode: BlendMode.dstIn,
-                            child: Container(
+                        // Fundo animado
+                        AnimatedBuilder(
+                          animation: _bannerAnimationController,
+                          builder: (context, child) {
+                            return Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [Colors.white.withOpacity(0.5), Colors.transparent],
+                                  begin: Alignment.topRight,
+                                  end: Alignment.bottomLeft,
+                                  colors: [
+                                    typeColor,
+                                    secondaryColor,
+                                  ],
+                                  transform: GradientRotation(
+                                    _bannerAnimationController.value * 0.1,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
+                              child: CustomPaint(
+                                painter: BannerPatternPainter(
+                                  color: Colors.white.withOpacity(0.1),
+                                  progress: _bannerAnimationController.value,
+                                ),
+                              ),
+                            );
+                          },
                         ),
+                        // Imagem do Pokémon flutuante
                         Center(
-                          child: TweenAnimationBuilder(
-                            duration: Duration(milliseconds: 700),
-                            tween: Tween<double>(begin: 0, end: 1),
-                            builder: (context, double value, child) {
-                              return Transform.scale(
-                                scale: value,
+                          child: AnimatedBuilder(
+                            animation: _floatingAnimation,
+                            builder: (context, child) {
+                              return Transform.translate(
+                                offset: Offset(0, _floatingAnimation.value),
                                 child: Hero(
                                   tag: 'pokemon-${widget.pokemonId}',
                                   child: CachedNetworkImage(
