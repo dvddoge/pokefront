@@ -169,20 +169,23 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   // Otimizando a função de busca para evitar recarregamentos desnecessários
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce?.cancel();
+    
+    setState(() {
+      isSearching = true;
+      searchError = '';
+    });
+
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      if (mounted && query != _searchController.text) {
-        setState(() {
-          isSearching = true;
-          searchError = '';
-        });
-        
+      if (mounted) {
         _performSearch(query);
       }
     });
   }
 
   Future<void> _performSearch(String query) async {
-    if (query.isEmpty) {
+    final normalizedQuery = query.toLowerCase().trim();
+    
+    if (normalizedQuery.isEmpty) {
       setState(() {
         searchResults = [];
         suggestions = [];
@@ -192,20 +195,70 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     }
 
     try {
-      final results = await searchPokemonByName(query);
-      if (mounted) {
+      // Primeiro, buscar as sugestões
+      final response = await http.get(
+        Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
+      );
+      
+      if (!mounted) return;
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List results = data['results'];
+        
+        // Filtrar pokémons que correspondem à busca
+        final filteredResults = results.where((pokemon) => 
+          pokemon['name'].toString().toLowerCase().contains(normalizedQuery)
+        ).toList();
+
+        // Atualizar sugestões imediatamente
         setState(() {
-          searchResults = results;
+          suggestions = filteredResults
+              .take(5)
+              .map((pokemon) => pokemon['name'].toString())
+              .toList();
+        });
+
+        // Buscar detalhes dos Pokémon filtrados em paralelo
+        final pokemonFutures = filteredResults.take(10).map((pokemon) async {
+          try {
+            final detailResponse = await http.get(Uri.parse(pokemon['url']));
+            if (detailResponse.statusCode == 200) {
+              final detailData = json.decode(detailResponse.body);
+              return Pokemon.fromDetailJson(detailData);
+            }
+          } catch (e) {
+            print('Erro ao buscar detalhes do pokemon: ${e.toString()}');
+          }
+          return null;
+        }).toList();
+
+        // Aguardar todos os detalhes serem carregados
+        final pokemons = (await Future.wait(pokemonFutures))
+            .where((pokemon) => pokemon != null)
+            .cast<Pokemon>()
+            .toList();
+
+        if (!mounted) return;
+
+        setState(() {
+          searchResults = pokemons;
+          isSearching = false;
+          searchError = '';
+        });
+      } else {
+        if (!mounted) return;
+        setState(() {
+          searchError = 'Falha ao buscar Pokémon';
           isSearching = false;
         });
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          searchError = 'Erro ao buscar Pokémon';
-          isSearching = false;
-        });
-      }
+      if (!mounted) return;
+      setState(() {
+        searchError = 'Erro ao buscar Pokémon';
+        isSearching = false;
+      });
     }
   }
 
@@ -242,41 +295,50 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           ),
         ],
       ),
-      child: MouseRegion(
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Buscar Pokémon...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                  prefixIcon: AnimatedRotation(
-                    duration: Duration(milliseconds: 300),
-                    turns: isSearching ? 1 : 0,
-                    child: Icon(
-                      Icons.catching_pokemon,
-                      color: isSearching ? Colors.red : Colors.grey,
-                    ),
-                  ),
-                ),
-                onChanged: _onSearchChanged,
+      child: Focus(
+        onFocusChange: (hasFocus) {
+          if (!hasFocus && _searchController.text.isEmpty) {
+            setState(() {
+              suggestions = [];
+            });
+          }
+        },
+        child: TextField(
+          controller: _searchController,
+          decoration: InputDecoration(
+            hintText: 'Buscar Pokémon...',
+            border: InputBorder.none,
+            contentPadding: EdgeInsets.symmetric(horizontal: 16),
+            prefixIcon: AnimatedRotation(
+              duration: Duration(milliseconds: 300),
+              turns: isSearching ? 1 : 0,
+              child: Icon(
+                Icons.catching_pokemon,
+                color: isSearching ? Colors.red : Colors.grey,
               ),
             ),
-            if (isSearching)
-              Padding(
-                padding: EdgeInsets.all(8),
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                  ),
-                ),
-              ),
-          ],
+            suffixIcon: _searchController.text.isNotEmpty
+              ? IconButton(
+                  icon: Icon(Icons.close),
+                  onPressed: () {
+                    setState(() {
+                      _searchController.clear();
+                      suggestions = [];
+                      searchResults = [];
+                      isSearching = false;
+                      searchError = '';
+                    });
+                  },
+                )
+              : null,
+          ),
+          onChanged: _onSearchChanged,
+          textInputAction: TextInputAction.search,
+          onSubmitted: (value) {
+            if (value.isNotEmpty) {
+              _performSearch(value);
+            }
+          },
         ),
       ),
     );
@@ -492,55 +554,65 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   Widget buildSuggestions() {
-    if (suggestions.isEmpty) return SizedBox.shrink();
+    if (suggestions.isEmpty || _searchController.text.isEmpty) {
+      return SizedBox.shrink();
+    }
 
-    return AnimationConfiguration.synchronized(
-      duration: const Duration(milliseconds: 300),
-      child: SlideAnimation(
-        verticalOffset: 50.0,
-        child: FadeInAnimation(
-          child: Container(
-            margin: EdgeInsets.symmetric(horizontal: 16),
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
-                  offset: Offset(0, 2),
+    return Container(
+      margin: EdgeInsets.symmetric(horizontal: 16),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Sugestões:',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey[800],
+                  fontSize: 16,
                 ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Sugestões:',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: suggestions.map((suggestion) => ActionChip(
-                    backgroundColor: Colors.red.withOpacity(0.1),
-                    label: Text(
-                      suggestion,
-                      style: TextStyle(color: Colors.red[700]),
+              ),
+              SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: suggestions.map((suggestion) {
+                  return Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () {
+                        _searchController.text = suggestion;
+                        _searchController.selection = TextSelection.fromPosition(
+                          TextPosition(offset: suggestion.length),
+                        );
+                        _performSearch(suggestion);
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          suggestion.toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.red[700],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
                     ),
-                    onPressed: () {
-                      _searchController.text = suggestion;
-                      _onSearchChanged(suggestion);
-                    },
-                  )).toList(),
-                ),
-              ],
-            ),
+                  );
+                }).toList(),
+              ),
+            ],
           ),
         ),
       ),
@@ -548,59 +620,102 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   Widget buildSearchResults() {
+    if (_searchController.text.isEmpty) return SizedBox.shrink();
+
     if (isSearching) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+              ),
+              SizedBox(height: 16),
+              Text(
+                'Buscando Pokémon...',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
         ),
       );
     }
 
     if (searchError.isNotEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Center(
-          child: Text(
-            searchError,
-            style: TextStyle(color: Colors.red),
-          ),
-        ),
-      );
-    }
-
-    if (searchResults.isNotEmpty) {
-      return AnimationLimiter(
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.85,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-          ),
-          itemCount: searchResults.length,
-          itemBuilder: (context, index) {
-            return AnimationConfiguration.staggeredGrid(
-              position: index,
-              duration: const Duration(milliseconds: 375),
-              columnCount: 2,
-              child: ScaleAnimation(
-                child: FadeInAnimation(
-                  child: buildPokemonCard(searchResults[index]),
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red),
+              SizedBox(height: 16),
+              Text(
+                searchError,
+                style: TextStyle(
+                  color: Colors.red,
+                  fontSize: 16,
                 ),
+                textAlign: TextAlign.center,
               ),
-            );
-          },
+            ],
+          ),
         ),
       );
     }
 
-    return const SizedBox.shrink();
+    if (searchResults.isEmpty && _searchController.text.isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            children: [
+              Icon(Icons.search_off, size: 48, color: Colors.grey),
+              SizedBox(height: 16),
+              Text(
+                'Nenhum Pokémon encontrado',
+                style: TextStyle(
+                  color: Colors.grey[800],
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return AnimationLimiter(
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          childAspectRatio: 0.75,
+          mainAxisSpacing: 16,
+          crossAxisSpacing: 16,
+        ),
+        itemCount: searchResults.length,
+        itemBuilder: (context, index) {
+          return AnimationConfiguration.staggeredGrid(
+            position: index,
+            duration: const Duration(milliseconds: 375),
+            columnCount: 3,
+            child: ScaleAnimation(
+              child: FadeInAnimation(
+                child: buildPokemonCard(searchResults[index]),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   Widget buildPaginationButtons() {
@@ -797,7 +912,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           children: [
             buildSearchArea(),
             if (_searchController.text.isNotEmpty) buildSuggestions(),
-            buildSearchResults(),
+            if (searchResults.isNotEmpty) buildSearchResults(),
             if (_searchController.text.isEmpty)
               FutureBuilder<List<Pokemon>>(
                 future: fetchPokemonList(page: currentPage),
