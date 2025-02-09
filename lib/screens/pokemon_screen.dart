@@ -26,7 +26,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   Timer? _debounce;
   List<Pokemon> searchResults = [];
   List<String> suggestions = [];
-  bool _isHovered = false;
 
   @override
   void initState() {

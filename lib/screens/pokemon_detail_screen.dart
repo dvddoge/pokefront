@@ -251,6 +251,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                 painter: BannerPatternPainter(
                                   color: Colors.white.withOpacity(0.1),
                                   progress: _bannerAnimationController.value,
+                                  type: types.first,
                                 ),
                               ),
                             );
