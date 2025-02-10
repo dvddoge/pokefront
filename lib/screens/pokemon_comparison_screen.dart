@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/pokemon.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../widgets/animated_counter.dart';
+import '../widgets/banner_pattern_painter.dart';
 
 class PokemonComparisonScreen extends StatelessWidget {
   final Pokemon pokemon1;
@@ -207,192 +208,364 @@ class PokemonComparisonScreen extends StatelessWidget {
     final totalStats2 = stats2.values.reduce((a, b) => a + b);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Comparação de Pokémon'),
-        centerTitle: true,
-        backgroundColor: Colors.red,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(32),
-                  bottomRight: Radius.circular(32),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Hero(
-                          tag: 'compare-${pokemon1.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: pokemon1.imageUrl,
-                            height: 120,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          pokemon1.name.toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Wrap(
-                          spacing: 4,
-                          children: pokemon1.types.map((type) => 
-                            _buildTypeChip(type, _getTypeColor(type))
-                          ).toList(),
-                        ),
-                      ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.red.shade800,
+              Colors.red.shade900,
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Barra superior com botão de voltar e título
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: Text(
-                      'VS',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    Expanded(
+                      child: Text(
+                        'BATALHA POKÉMON',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          shadows: [
+                            Shadow(
+                              offset: Offset(2, 2),
+                              blurRadius: 4,
+                              color: Colors.black.withOpacity(0.5),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      children: [
-                        Hero(
-                          tag: 'compare-${pokemon2.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: pokemon2.imageUrl,
-                            height: 120,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          pokemon2.name.toUpperCase(),
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Colors.white,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Wrap(
-                          spacing: 4,
-                          children: pokemon2.types.map((type) => 
-                            _buildTypeChip(type, _getTypeColor(type))
-                          ).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+                    SizedBox(width: 48), // Para balancear o layout
+                  ],
+                ),
               ),
-            ),
-            Padding(
-              padding: EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Status Total',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
-                            ),
+              
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      // Arena de batalha com os Pokémon
+                      Container(
+                        height: 320,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Colors.red.shade900,
+                              Colors.red.shade800,
+                              Colors.orange.shade900,
+                            ],
                           ),
-                          SizedBox(height: 16),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        ),
+                        child: CustomPaint(
+                          painter: BannerPatternPainter(
+                            color: Colors.white.withOpacity(0.1),
+                            progress: DateTime.now().millisecondsSinceEpoch / 1000,
+                            type: 'battle',
+                          ),
+                          child: Stack(
                             children: [
-                              Column(
-                                children: [
-                                  AnimatedCounter(
-                                    value: totalStats1,
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: totalStats1 > totalStats2 ? Colors.green : Colors.red,
+                              // Pokémon 1 (Esquerda)
+                              Positioned(
+                                left: 20,
+                                bottom: 20,
+                                child: Column(
+                                  children: [
+                                    Hero(
+                                      tag: 'compare-${pokemon1.id}',
+                                      child: TweenAnimationBuilder<double>(
+                                        duration: Duration(milliseconds: 800),
+                                        tween: Tween(begin: -100.0, end: 0.0),
+                                        builder: (context, value, child) {
+                                          return Transform.translate(
+                                            offset: Offset(value, 0),
+                                            child: CachedNetworkImage(
+                                              imageUrl: pokemon1.imageUrl,
+                                              height: 180,
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  Text(pokemon1.name.toUpperCase()),
-                                ],
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            pokemon1.name.toUpperCase(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red.shade900,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Wrap(
+                                            spacing: 4,
+                                            children: pokemon1.types.map((type) =>
+                                              _buildTypeChip(type, _getTypeColor(type))
+                                            ).toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              Column(
-                                children: [
-                                  AnimatedCounter(
-                                    value: totalStats2,
-                                    style: TextStyle(
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                      color: totalStats2 > totalStats1 ? Colors.green : Colors.red,
+                              
+                              // VS no centro
+                              Center(
+                                child: TweenAnimationBuilder<double>(
+                                  duration: Duration(milliseconds: 1000),
+                                  tween: Tween(begin: 0.0, end: 1.0),
+                                  builder: (context, value, child) {
+                                    return Transform.scale(
+                                      scale: value,
+                                      child: Container(
+                                        padding: EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.white,
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withOpacity(0.3),
+                                              blurRadius: 10,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Text(
+                                          'VS',
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+
+                              // Pokémon 2 (Direita)
+                              Positioned(
+                                right: 20,
+                                bottom: 20,
+                                child: Column(
+                                  children: [
+                                    Hero(
+                                      tag: 'compare-${pokemon2.id}',
+                                      child: TweenAnimationBuilder<double>(
+                                        duration: Duration(milliseconds: 800),
+                                        tween: Tween(begin: 100.0, end: 0.0),
+                                        builder: (context, value, child) {
+                                          return Transform.translate(
+                                            offset: Offset(value, 0),
+                                            child: Transform.scale(
+                                              scaleX: -1, // Espelha a imagem horizontalmente
+                                              child: CachedNetworkImage(
+                                                imageUrl: pokemon2.imageUrl,
+                                                height: 180,
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
-                                  ),
-                                  Text(pokemon2.name.toUpperCase()),
-                                ],
+                                    Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.9),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          Text(
+                                            pokemon2.name.toUpperCase(),
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red.shade900,
+                                            ),
+                                          ),
+                                          SizedBox(height: 4),
+                                          Wrap(
+                                            spacing: 4,
+                                            children: pokemon2.types.map((type) =>
+                                              _buildTypeChip(type, _getTypeColor(type))
+                                            ).toList(),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Card(
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Text(
-                            'Comparação Detalhada',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey[800],
+
+                      // Status Total Card
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                colors: [Colors.white, Colors.grey.shade100],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'PODER TOTAL',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                                SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    _buildTotalStats(
+                                      pokemon1.name,
+                                      totalStats1,
+                                      totalStats1 >= totalStats2,
+                                    ),
+                                    Container(
+                                      width: 2,
+                                      height: 50,
+                                      color: Colors.grey.shade300,
+                                    ),
+                                    _buildTotalStats(
+                                      pokemon2.name,
+                                      totalStats2,
+                                      totalStats2 >= totalStats1,
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
-                          SizedBox(height: 16),
-                          ...statNames.entries.map((stat) {
-                            return _buildStatComparison(
-                              context,
-                              stat.value,
-                              stats1[stat.key] ?? 0,
-                              stats2[stat.key] ?? 0,
-                            );
-                          }).toList(),
-                        ],
+                        ),
                       ),
-                    ),
+
+                      // Comparação detalhada de status
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Card(
+                          elevation: 8,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Container(
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(16),
+                              gradient: LinearGradient(
+                                colors: [Colors.white, Colors.grey.shade100],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'COMPARAÇÃO DE STATUS',
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.red.shade900,
+                                  ),
+                                ),
+                                SizedBox(height: 24),
+                                ...statNames.entries.map((stat) {
+                                  return _buildStatComparison(
+                                    context,
+                                    stat.value,
+                                    stats1[stat.key] ?? 0,
+                                    stats2[stat.key] ?? 0,
+                                  );
+                                }).toList(),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 16),
+                    ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTotalStats(String name, int total, bool isHigher) {
+    return Column(
+      children: [
+        TweenAnimationBuilder<double>(
+          duration: Duration(milliseconds: 1500),
+          tween: Tween(begin: 0, end: 1),
+          builder: (context, value, child) {
+            return AnimatedCounter(
+              value: (total * value).toInt(),
+              style: TextStyle(
+                fontSize: 36,
+                fontWeight: FontWeight.bold,
+                color: isHigher ? Colors.green : Colors.red.shade900,
+              ),
+            );
+          },
+        ),
+        SizedBox(height: 8),
+        Text(
+          name.toUpperCase(),
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey.shade800,
+          ),
+        ),
+        if (isHigher)
+          Icon(
+            Icons.arrow_upward,
+            color: Colors.green,
+            size: 20,
+          ),
+      ],
     );
   }
 }
