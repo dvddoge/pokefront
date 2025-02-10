@@ -5,6 +5,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../widgets/animated_counter.dart';
 import '../widgets/banner_pattern_painter.dart';
+import '../models/pokemon.dart';
+import 'pokemon_comparison_screen.dart';
 
 class PokemonDetailScreen extends StatefulWidget {
   final int pokemonId;
@@ -24,6 +26,11 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
   late Future<Map<String, dynamic>> _pokemonDetailFuture;
   late AnimationController _bannerAnimationController;
   late Animation<double> _floatingAnimation;
+  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // Adiciona variável estática para armazenar o Pokémon para comparação
+  static Pokemon? pokemonToCompare;
+  static Map<String, int>? statsToCompare;
 
   @override
   void initState() {
@@ -111,6 +118,45 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
     return chain;
   }
 
+  // Função para iniciar a comparação
+  void _handleComparison(Pokemon currentPokemon, Map<String, int> currentStats) {
+    if (pokemonToCompare == null) {
+      // Se não há Pokémon selecionado para comparação, armazena o atual
+      pokemonToCompare = currentPokemon;
+      statsToCompare = currentStats;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${currentPokemon.name.toUpperCase()} selecionado para comparação'),
+          duration: Duration(seconds: 2),
+          action: SnackBarAction(
+            label: 'Cancelar',
+            onPressed: () {
+              pokemonToCompare = null;
+              statsToCompare = null;
+            },
+          ),
+        ),
+      );
+    } else {
+      // Se já existe um Pokémon selecionado, navega para a tela de comparação
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PokemonComparisonScreen(
+            pokemon1: pokemonToCompare!,
+            pokemon2: currentPokemon,
+            stats1: statsToCompare!,
+            stats2: currentStats,
+          ),
+        ),
+      ).then((_) {
+        // Limpa os dados de comparação após voltar da tela
+        pokemonToCompare = null;
+        statsToCompare = null;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
@@ -119,7 +165,53 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
         return false;
       },
       child: Scaffold(
+        key: _scaffoldKey,
         backgroundColor: Colors.grey[100],
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: FutureBuilder<Map<String, dynamic>>(
+          future: _pokemonDetailFuture,
+          builder: (context, snapshot) {
+            if (!snapshot.hasData) return SizedBox.shrink();
+            
+            final details = Map<String, dynamic>.from(snapshot.data!);
+            final pokemonData = Map<String, dynamic>.from(details['pokemon'] as Map<String, dynamic>);
+            final stats = Map<String, int>.fromEntries(
+              (pokemonData['stats'] as List).map(
+                (s) => MapEntry(
+                  (s['stat']['name'] as String),
+                  (s['base_stat'] as int),
+                ),
+              ),
+            );
+
+            final types = (pokemonData['types'] as List)
+                .map((t) => ((t as Map<String, dynamic>)['type']['name'] as String))
+                .toList();
+
+            final currentPokemon = Pokemon(
+              id: widget.pokemonId,
+              name: widget.pokemonName,
+              imageUrl: pokemonData['sprites']['other']['official-artwork']['front_default'] ?? 
+                  'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${widget.pokemonId}.png',
+              types: types,
+            );
+
+            return FloatingActionButton.extended(
+              onPressed: () => _handleComparison(currentPokemon, stats),
+              backgroundColor: getTypeColor(types.first),
+              icon: Icon(
+                pokemonToCompare == null ? Icons.compare_arrows : Icons.compare,
+                color: Colors.white,
+              ),
+              label: Text(
+                pokemonToCompare == null 
+                    ? 'Comparar' 
+                    : 'Comparar com ${pokemonToCompare!.name}',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          },
+        ),
         body: FutureBuilder<Map<String, dynamic>>(
           future: _pokemonDetailFuture,
           builder: (context, snapshot) {
