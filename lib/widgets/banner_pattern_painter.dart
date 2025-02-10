@@ -5,53 +5,74 @@ class BannerPatternPainter extends CustomPainter {
   final Color color;
   final double progress;
   final String type;
+  final Paint _paint;
 
   BannerPatternPainter({
     required this.color,
     required this.progress,
     required this.type,
-  });
+  }) : _paint = Paint()
+    ..color = color
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 2.0
+    ..isAntiAlias = true;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0;
+    if (type == 'battle') {
+      _paintBattlePattern(canvas, size);
+    } else {
+      _paintDefaultPattern(canvas, size);
+    }
+  }
 
-    final maxRadius = size.width * 0.8;
+  void _paintBattlePattern(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width * 0.4;
+    
+    // Otimização: Pre-calcular o seno
+    final wave = math.sin(progress * math.pi * 2) * 5;
 
-    // Desenha círculos concêntricos com movimento de onda
-    for (var i = 0; i < 5; i++) {
-      final radius = maxRadius * (0.2 + i * 0.2);
-      final wave = math.sin(progress * math.pi * 2 + i * 0.5) * 10;
-      
+    // Desenhar círculos com animação de onda
+    for (var i = 0; i < 3; i++) {
+      final radius = maxRadius * (0.5 + i * 0.25);
       canvas.drawCircle(
         center,
         radius + wave,
-        paint,
+        _paint,
       );
     }
 
-    // Desenha linhas diagonais com movimento
-    paint.strokeWidth = 1.0;
+    // Desenhar linhas diagonais
+    _paint.strokeWidth = 1.0;
     final spacing = 40.0;
-    final diagonal = math.sqrt(size.width * size.width + size.height * size.height);
-    final offset = progress * spacing;
+    final diagonalCount = (size.width + size.height) ~/ spacing;
+    final offset = (progress * spacing * 2) % spacing;
 
-    for (var i = 0; i < diagonal / spacing; i++) {
-      final y = i * spacing + offset;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y - size.width),
-        paint,
+    for (var i = 0; i < diagonalCount; i++) {
+      final start = Offset(-size.width, i * spacing + offset);
+      final end = Offset(size.width * 2, i * spacing + offset - size.height);
+      canvas.drawLine(start, end, _paint);
+    }
+  }
+
+  void _paintDefaultPattern(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width * 0.4;
+    
+    for (var i = 0; i < 3; i++) {
+      canvas.drawCircle(
+        center,
+        maxRadius * (0.5 + i * 0.25),
+        _paint,
       );
     }
   }
 
   @override
   bool shouldRepaint(BannerPatternPainter oldDelegate) {
-    return oldDelegate.progress != progress || oldDelegate.color != color || oldDelegate.type != type;
+    return oldDelegate.progress != progress || 
+           oldDelegate.color != color || 
+           oldDelegate.type != type;
   }
 }

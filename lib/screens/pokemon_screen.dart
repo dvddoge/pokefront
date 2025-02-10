@@ -11,6 +11,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../models/pokemon.dart';
 import 'pokemon_detail_screen.dart';
 import 'pokemon_comparison_screen.dart';
+import '../services/image_preload_service.dart';
 
 class PokemonScreen extends StatefulWidget {
   @override
@@ -33,6 +34,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   late AnimationController _shakeController;
   bool isComparisonMode = false;
   final Map<int, Map<String, int>> _statsCache = {};
+  bool _isLoadingStats = false;
+  final ImagePreloadService _imagePreloadService = ImagePreloadService();
 
   @override
   void initState() {
@@ -60,6 +63,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     _searchController.dispose();
     _shakeController.dispose();
     _debounce?.cancel();
+    _imagePreloadService.clearCache();
     super.dispose();
   }
 
@@ -400,33 +404,28 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   void _handlePokemonTap(Pokemon pokemon) {
     if (isComparisonMode) {
-      if (pokemonToCompare == null) {
-        // Mostrar loading enquanto carrega os stats
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Center(
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                    ),
-                    SizedBox(height: 16),
-                    Text('Carregando status...'),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
+      if (_isLoadingStats) return; // Previne múltiplos taps enquanto carrega
 
-        // Buscar os stats e atualizar o estado
+      if (pokemonToCompare == null) {
+        setState(() => _isLoadingStats = true);
+        
+        // Pré-carregar a imagem quando selecionar o primeiro pokémon
+        _imagePreloadService.preloadPokemonImage(pokemon);
+
+        // Verifica primeiro se já temos os stats em cache
+        if (_statsCache.containsKey(pokemon.id)) {
+          setState(() {
+            pokemonToCompare = pokemon;
+            statsToCompare = _statsCache[pokemon.id];
+            _isLoadingStats = false;
+            _shakeController.reset();
+            _shakeController.forward();
+          });
+          return;
+        }
+
+        // Se não estiver em cache, busca os stats
         fetchPokemonStats(pokemon.id).then((stats) {
-          Navigator.pop(context); // Remove o loading
           if (stats != null) {
             setState(() {
               pokemonToCompare = pokemon;
@@ -435,35 +434,15 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               _shakeController.forward();
             });
           }
+          setState(() => _isLoadingStats = false);
         });
       } else if (pokemonToCompare!.id != pokemon.id) {
-        // Mostrar loading enquanto carrega os stats do segundo pokémon
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => Center(
-            child: Card(
-              child: Padding(
-                padding: EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                    ),
-                    SizedBox(height: 16),
-                    Text('Preparando batalha...'),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
+        setState(() => _isLoadingStats = true);
 
-        // Buscar os stats do segundo pokémon e navegar para a comparação
-        fetchPokemonStats(pokemon.id).then((stats) {
-          Navigator.pop(context); // Remove o loading
-          if (stats != null) {
+        // Pré-carregar as imagens antes de navegar para a comparação
+        _imagePreloadService.preloadBattle(pokemonToCompare!, pokemon).then((_) {
+          // Verifica o cache primeiro
+          if (_statsCache.containsKey(pokemon.id)) {
             Navigator.push(
               context,
               PageRouteBuilder(
@@ -471,7 +450,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   pokemon1: pokemonToCompare!,
                   pokemon2: pokemon,
                   stats1: statsToCompare!,
-                  stats2: stats,
+                  stats2: _statsCache[pokemon.id]!,
                 ),
                 transitionsBuilder: (context, animation, secondaryAnimation, child) {
                   const begin = Offset(1.0, 0.0);
@@ -487,21 +466,58 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 pokemonToCompare = null;
                 statsToCompare = null;
                 isComparisonMode = false;
+                _isLoadingStats = false;
               });
             });
+            return;
           }
+
+          // Se não estiver em cache, busca os stats
+          fetchPokemonStats(pokemon.id).then((stats) {
+            if (stats != null) {
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder: (context, animation, secondaryAnimation) => PokemonComparisonScreen(
+                    pokemon1: pokemonToCompare!,
+                    pokemon2: pokemon,
+                    stats1: statsToCompare!,
+                    stats2: stats,
+                  ),
+                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.easeInOutCubic;
+                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                    var offsetAnimation = animation.drive(tween);
+                    return SlideTransition(position: offsetAnimation, child: child);
+                  },
+                ),
+              ).then((_) {
+                setState(() {
+                  pokemonToCompare = null;
+                  statsToCompare = null;
+                  isComparisonMode = false;
+                });
+              });
+            }
+            setState(() => _isLoadingStats = false);
+          });
         });
       }
     } else {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PokemonDetailScreen(
-            pokemonId: pokemon.id,
-            pokemonName: pokemon.name,
+      // Pré-carregar a imagem antes de navegar para os detalhes
+      _imagePreloadService.preloadPokemonImage(pokemon).then((_) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PokemonDetailScreen(
+              pokemonId: pokemon.id,
+              pokemonName: pokemon.name,
+            ),
           ),
-        ),
-      );
+        );
+      });
     }
   }
 
@@ -761,6 +777,18 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       print('Erro ao buscar stats: $e');
     }
     return null;
+  }
+
+  void _prefetchStats(List<Pokemon> pokemons) {
+    for (var pokemon in pokemons) {
+      if (!_statsCache.containsKey(pokemon.id)) {
+        fetchPokemonStats(pokemon.id).then((stats) {
+          if (stats != null) {
+            _statsCache[pokemon.id] = stats;
+          }
+        });
+      }
+    }
   }
 
   Widget _buildTypeChip({required String type, required bool isHovered}) {
@@ -1244,6 +1272,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   }
 
                   final pokemonList = snapshot.data ?? [];
+                  // Pre-fetch stats para otimizar a performance
+                  if (isComparisonMode) {
+                    _prefetchStats(pokemonList);
+                  }
+                  
                   return AnimationLimiter(
                     child: GridView.builder(
                       shrinkWrap: true,
