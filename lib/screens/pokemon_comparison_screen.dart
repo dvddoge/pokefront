@@ -231,54 +231,72 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
             offset: floatingAnimation.value,
             child: Stack(
               children: [
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Hero(
-                      tag: 'pokemon-${pokemon.id}',
-                      child: CachedNetworkImage(
-                        imageUrl: pokemon.imageUrl,
-                        height: 200,
-                        fit: BoxFit.contain,
+                AnimatedContainer(
+                  duration: Duration(milliseconds: 800),
+                  curve: Curves.easeInOut,
+                  margin: EdgeInsets.only(
+                    bottom: _showTypeAdvantage && typeAdvantage > 1.0 ? 32 : 0,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Hero(
+                        tag: 'pokemon-${pokemon.id}',
+                        child: CachedNetworkImage(
+                          imageUrl: pokemon.imageUrl,
+                          height: 200,
+                          fit: BoxFit.contain,
+                        ),
                       ),
-                    ),
-                    if (_showTypeAdvantage && typeAdvantage > 1.0)
-                      TweenAnimationBuilder<double>(
-                        duration: Duration(milliseconds: 500),
-                        curve: Curves.elasticOut,
-                        tween: Tween(begin: 0.0, end: 1.0),
-                        builder: (context, value, child) {
-                          return Transform.scale(
-                            scale: value,
+                    ],
+                  ),
+                ),
+                if (_showTypeAdvantage && typeAdvantage > 1.0)
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    child: TweenAnimationBuilder<double>(
+                      duration: Duration(milliseconds: 800),
+                      curve: Curves.easeInOut,
+                      tween: Tween(begin: 0.0, end: 1.0),
+                      builder: (context, value, child) {
+                        return Transform.scale(
+                          scale: value,
+                          child: Opacity(
+                            opacity: value,
                             child: Container(
                               padding: EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
+                                horizontal: 12,
+                                vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.8),
+                                color: Colors.green.withOpacity(0.8 * value),
                                 borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.2),
+                                    color: Colors.black.withOpacity(0.2 * value),
                                     blurRadius: 4,
-                                    offset: Offset(0, 2),
+                                    offset: Offset(0, 2 * value),
                                   ),
                                 ],
                               ),
-                              child: Text(
-                                'Vantagem ${(typeAdvantage * 100 - 100).toStringAsFixed(0)}%',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
+                              child: Center(
+                                child: Text(
+                                  'Vantagem ${(typeAdvantage * 100 - 100).toStringAsFixed(0)}%',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(value),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ),
-                          );
-                        },
-                      ),
-                  ],
-                ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
               ],
             ),
           ),
@@ -649,29 +667,34 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
               duration: Duration(milliseconds: 1500),
               tween: Tween(begin: 0, end: 1),
               builder: (context, value, child) {
-                return Text(
-                  (effectiveTotal * value).toInt().toString(),
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: textColor,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black12,
-                        offset: Offset(2, 2),
-                        blurRadius: 4,
-                      ),
-                    ],
+                return Container(
+                  padding: EdgeInsets.only(right: 16, top: 16),
+                  child: Text(
+                    (effectiveTotal * value).toInt().toString(),
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black12,
+                          offset: Offset(2, 2),
+                          blurRadius: 4,
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },
             ),
             if (typeAdvantage > 1.0)
               Positioned(
-                right: -8,
-                top: -8,
+                right: 0,
+                top: 0,
                 child: Container(
-                  padding: EdgeInsets.all(4),
+                  width: 28,
+                  height: 28,
+                  padding: EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
@@ -683,12 +706,15 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                       ),
                     ],
                   ),
-                  child: Text(
-                    '↑',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                  child: Center(
+                    child: Text(
+                      '⬆',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        height: 1.0,
+                      ),
                     ),
                   ),
                 ),
