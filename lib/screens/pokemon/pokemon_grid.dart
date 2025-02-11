@@ -133,7 +133,7 @@ class _PokemonGridState extends State<PokemonGrid> {
       }
 
       final pokemonService = PokemonListService();
-      final pokemons = await pokemonService.fetchPokemonList(
+      final result = await pokemonService.fetchPokemonList(
         page: widget.currentPage,
         selectedTypes: widget.selectedTypes,
         selectedGeneration: widget.selectedGeneration,
@@ -142,6 +142,7 @@ class _PokemonGridState extends State<PokemonGrid> {
 
       if (_disposed) return;
 
+      final List<Pokemon> pokemons = result['pokemons'];
       if (pokemons.isNotEmpty) {
         pokemons.sort((a, b) => a.id.compareTo(b.id));
         _cache[cacheKey] = List<Pokemon>.from(pokemons);

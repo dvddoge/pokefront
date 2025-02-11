@@ -135,7 +135,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   Future<void> _loadInitialPokemonList() async {
     setState(() => isSearching = true);
     try {
-      final pokemons = await _pokemonListService.fetchPokemonList(
+      final result = await _pokemonListService.fetchPokemonList(
         page: currentPage,
         selectedTypes: selectedTypes,
         selectedGeneration: selectedGeneration,
@@ -143,8 +143,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       );
       if (mounted) {
         setState(() {
-          searchResults = pokemons;
-          totalPages = (1010 / pageSize).ceil(); // Total aproximado de Pokémon
+          searchResults = result['pokemons'];
+          totalPages = (result['total'] / pageSize).ceil();
           isSearching = false;
         });
       }
@@ -213,6 +213,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _handleTypesChanged(Map<String, bool> newTypes) {
     setState(() {
       selectedTypes = newTypes;
+      currentPage = 1;
       _applyFilters();
     });
   }
@@ -220,6 +221,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _handleGenerationChanged(int generation) {
     setState(() {
       selectedGeneration = generation;
+      currentPage = 1;
       _applyFilters();
     });
   }
@@ -227,6 +229,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _handlePowerRangeChanged(RangeValues range) {
     setState(() {
       powerRange = range;
+      currentPage = 1;
       _applyFilters();
     });
   }
@@ -234,60 +237,38 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _applyFilters() async {
     setState(() => isSearching = true);
 
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
+
     try {
-      if (!isSearchMode) {
-        // Se não estiver em modo de busca, carrega todos os Pokémon para filtrar
-        final response = await http.get(
-          Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
-        );
-
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final results = data['results'] as List;
-          List<Pokemon> allPokemons = [];
-
-          for (var result in results) {
-            final pokemonUrl = result['url'] as String;
-            final pokemonResponse = await http.get(Uri.parse(pokemonUrl));
-            
-            if (pokemonResponse.statusCode == 200) {
-              final pokemonData = json.decode(pokemonResponse.body);
-              final pokemon = Pokemon.fromDetailJson(pokemonData);
-
-              // Carrega os stats do Pokémon se necessário para o filtro de poder
-              if (powerRange != RangeValues(0, 1000)) {
-                final stats = await _pokemonListService.fetchPokemonStats(pokemon.id);
-                if (stats != null) {
-                  _statsCache[pokemon.id] = stats;
-                }
-              }
-
-              if (_shouldIncludePokemon(pokemon)) {
-                allPokemons.add(pokemon);
-              }
-            }
-          }
-
-          if (mounted) {
-            setState(() {
-              allSearchResults = allPokemons;
-              currentPage = 1;
-              searchResults = _getPageItems(currentPage);
-              totalPages = allPokemons.isEmpty ? 0 : (allPokemons.length / pageSize).ceil();
-              isSearching = false;
-            });
-          }
-        }
-      } else {
-        // Se estiver em modo de busca, filtra os resultados existentes
+      if (isSearchMode) {
         final filteredResults = allSearchResults.where(_shouldIncludePokemon).toList();
         setState(() {
           allSearchResults = filteredResults;
-          currentPage = 1;
           searchResults = _getPageItems(currentPage);
           totalPages = filteredResults.isEmpty ? 0 : (filteredResults.length / pageSize).ceil();
           isSearching = false;
         });
+      } else {
+        final result = await _pokemonListService.fetchPokemonList(
+          page: currentPage,
+          selectedTypes: selectedTypes,
+          selectedGeneration: selectedGeneration,
+          powerRange: powerRange,
+        );
+
+        if (mounted) {
+          setState(() {
+            searchResults = result['pokemons'];
+            totalPages = (result['total'] / pageSize).ceil();
+            isSearching = false;
+          });
+        }
       }
     } catch (e) {
       print('Erro ao aplicar filtros: $e');
@@ -463,7 +444,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       isSearching = true;
     });
 
-    // Voltar ao topo da lista
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0,
@@ -479,7 +459,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       });
     } else {
       try {
-        final pokemons = await _pokemonListService.fetchPokemonList(
+        final result = await _pokemonListService.fetchPokemonList(
           page: newPage,
           selectedTypes: selectedTypes,
           selectedGeneration: selectedGeneration,
@@ -487,7 +467,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         );
         if (mounted) {
           setState(() {
-            searchResults = pokemons;
+            searchResults = result['pokemons'];
+            totalPages = (result['total'] / pageSize).ceil();
             isSearching = false;
           });
         }
