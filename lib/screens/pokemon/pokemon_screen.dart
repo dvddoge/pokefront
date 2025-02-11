@@ -778,7 +778,22 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                           child: Column(
                             children: [
                               if (searchResults.isEmpty && !isSearching && isSearchMode)
-                                SubtleNoResults(searchQuery: currentSearchQuery)
+                                SubtleNoResults(
+                                  searchQuery: currentSearchQuery,
+                                )
+                              else if (searchResults.isEmpty && !isSearching)
+                                SubtleNoResults(
+                                  searchQuery: isSearchMode ? currentSearchQuery : 
+                                    'Nenhum Pokémon encontrado com os filtros selecionados:\n' +
+                                    [
+                                      if (selectedTypes.isNotEmpty) 
+                                        'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
+                                      if (selectedGeneration > 0) 
+                                        'Geração: $selectedGeneration',
+                                      if (powerRange != const RangeValues(0, 1000))
+                                        'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
+                                    ].join('\n'),
+                                )
                               else
                                 AnimationLimiter(
                                   child: GridView.builder(
