@@ -544,7 +544,10 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
           children: [
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
-                colors: [type1Color, type2Color],
+                colors: [
+                  Color(0xFF7AC74C),  // Verde mais suave
+                  Color(0xFFE57373),  // Vermelho mais suave
+                ],
               ).createShader(bounds),
               child: Text(
                 'PODER TOTAL',
@@ -565,6 +568,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                   isHigher: totalStats1 >= totalStats2,
                   typeAdvantage: typeAdvantage1,
                   color: type1Color,
+                  otherTotal: totalStats2,
                 ),
                 Container(
                   width: 2,
@@ -583,6 +587,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                   isHigher: totalStats2 >= totalStats1,
                   typeAdvantage: typeAdvantage2,
                   color: type2Color,
+                  otherTotal: totalStats1,
                 ),
               ],
             ),
@@ -619,7 +624,10 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
           children: [
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
-                colors: [type1Color, type2Color],
+                colors: [
+                  Color(0xFF7AC74C),  // Verde mais suave
+                  Color(0xFFE57373),  // Vermelho mais suave
+                ],
               ).createShader(bounds),
               child: Text(
                 'COMPARAÇÃO DE STATUS',
@@ -632,12 +640,14 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
             ),
             SizedBox(height: 24),
             ...statNames.entries.map((stat) {
+              final value1 = stats1[stat.key] ?? 0;
+              final value2 = stats2[stat.key] ?? 0;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
                 child: StatComparisonBar(
                   statName: stat.value,
-                  value1: stats1[stat.key] ?? 0,
-                  value2: stats2[stat.key] ?? 0,
+                  value1: value1,
+                  value2: value2,
                 ),
               );
             }).toList(),
@@ -653,9 +663,10 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
     required bool isHigher,
     required double typeAdvantage,
     required Color color,
+    required int otherTotal,
   }) {
     final effectiveTotal = (total * typeAdvantage).round();
-    final textColor = isHigher ? Colors.green : Colors.red[700];
+    final textColor = total == otherTotal ? Colors.grey[600]! : (isHigher ? Colors.green : Colors.red[700]);
     
     return Column(
       mainAxisSize: MainAxisSize.min,

@@ -7,6 +7,7 @@ import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../models/pokemon.dart';
 import '../widgets/banner_pattern_painter.dart';
@@ -964,15 +965,75 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: Text('PokéDex'),
+        title: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.red.shade900.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Image.network(
+                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',
+                height: 24,
+                width: 24,
+              ),
+            ),
+            SizedBox(width: 12),
+            ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  Colors.white,
+                  Colors.white.withOpacity(0.85),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ).createShader(bounds),
+              child: Text(
+                'PokéDex',
+                style: GoogleFonts.rubikMonoOne(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1,
+                  shadows: [
+                    Shadow(
+                      color: Colors.red.shade900.withOpacity(0.3),
+                      offset: Offset(1, 1),
+                      blurRadius: 2,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
         centerTitle: true,
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.red.shade700, Colors.red.shade900],
+              colors: [
+                Color(0xFFE53935),  // Vermelho mais vibrante
+                Color(0xFFD32F2F),  // Vermelho médio
+                Color(0xFFC62828),  // Vermelho mais escuro
+              ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.red.shade900.withOpacity(0.2),
+                blurRadius: 6,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
         ),
         elevation: 0,

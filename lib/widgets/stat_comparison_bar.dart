@@ -53,8 +53,8 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
     final percentage1 = widget.value1 / widget.maxValue;
     final percentage2 = widget.value2 / widget.maxValue;
 
-    final color1 = widget.color1 ?? (better == 1 ? Colors.green : Colors.red[700]!);
-    final color2 = widget.color2 ?? (better == 2 ? Colors.green : Colors.red[700]!);
+    final color1 = widget.color1 ?? (better == 1 ? Colors.green : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
+    final color2 = widget.color2 ?? (better == 2 ? Colors.green : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
 
     return AnimatedBuilder(
       animation: _animation,
