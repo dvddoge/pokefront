@@ -38,12 +38,12 @@ class Pokemon {
     // Pegar todos os tipos do Pokemon da API
     List<String> types = [];
     if (json['types'] != null) {
-      types = (json['types'] as List)
+      types = List<String>.unmodifiable((json['types'] as List)
           .map((t) => t['type']['name'] as String)
-          .toList();
+          .toList());
     }
     if (types.isEmpty) {
-      types = ['normal'];
+      types = List<String>.unmodifiable(['normal']);
     }
 
     return Pokemon(

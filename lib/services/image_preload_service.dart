@@ -1,5 +1,5 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../models/pokemon.dart';
 
 class ImagePreloadService {
@@ -13,22 +13,33 @@ class ImagePreloadService {
     if (_preloadedImages.contains(pokemon.imageUrl)) return;
 
     try {
-      await CachedNetworkImageProvider(pokemon.imageUrl)
-        .resolve(ImageConfiguration.empty);
+      final context = NavigationService.navigatorKey.currentContext;
+      if (context == null) return;
+
+      final provider = CachedNetworkImageProvider(pokemon.imageUrl);
+      await precacheImage(provider, context);
       _preloadedImages.add(pokemon.imageUrl);
     } catch (e) {
-      print('Error preloading image: $e');
+      debugPrint('Aviso: Imagem não pré-carregada para ${pokemon.name}');
     }
   }
 
   Future<void> preloadBattle(Pokemon pokemon1, Pokemon pokemon2) async {
-    await Future.wait([
-      preloadPokemonImage(pokemon1),
-      preloadPokemonImage(pokemon2),
-    ]);
+    try {
+      await Future.wait([
+        preloadPokemonImage(pokemon1),
+        preloadPokemonImage(pokemon2),
+      ], eagerError: false);
+    } catch (e) {
+      debugPrint('Aviso: Algumas imagens da batalha não foram pré-carregadas');
+    }
   }
 
   void clearCache() {
     _preloadedImages.clear();
   }
+}
+
+class NavigationService {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 }
