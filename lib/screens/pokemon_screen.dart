@@ -3,14 +3,15 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'dart:math' as math;
 import 'package:http/http.dart' as http;
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 import '../models/pokemon.dart';
-import 'pokemon_detail_screen.dart';
-import 'pokemon_comparison_screen.dart';
+import '../widgets/banner_pattern_painter.dart';
+import 'package:pokefront/screens/pokemon_comparison_screen.dart' as comparison;
+import 'package:pokefront/screens/pokemon_detail_screen.dart' as detail;
 import '../services/image_preload_service.dart';
 
 class PokemonScreen extends StatefulWidget {
@@ -36,6 +37,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   final Map<int, Map<String, int>> _statsCache = {};
   bool _isLoadingStats = false;
   final ImagePreloadService _imagePreloadService = ImagePreloadService();
+  late AnimationController _cardAnimationController;
+  late AnimationController _bannerAnimationController;
 
   @override
   void initState() {
@@ -44,9 +47,25 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       vsync: this,
       duration: Duration(milliseconds: 300),
     );
+    
+    _bannerAnimationController = AnimationController(
+      duration: Duration(milliseconds: 4000),
+      vsync: this,
+    );
+
+    _bannerAnimationController.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        _bannerAnimationController.reverse();
+      } else if (status == AnimationStatus.dismissed) {
+        _bannerAnimationController.forward();
+      }
+    });
+
+    _bannerAnimationController.forward();
+
     _shakeController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1000),
+      duration: Duration(milliseconds: 2000),
     )..addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _shakeController.reverse();
@@ -54,6 +73,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         _shakeController.forward();
       }
     });
+    _cardAnimationController = AnimationController(
+      duration: Duration(milliseconds: 4000),
+      vsync: this,
+    )..repeat();
   }
 
   @override
@@ -64,6 +87,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     _shakeController.dispose();
     _debounce?.cancel();
     _imagePreloadService.clearCache();
+    _cardAnimationController.dispose();
+    _bannerAnimationController.dispose();
     super.dispose();
   }
 
@@ -302,76 +327,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     return pages;
   }
 
-  void _handleComparison(Pokemon pokemon, Map<String, int> stats) {
-    setState(() {
-      if (pokemonToCompare == null) {
-        pokemonToCompare = pokemon;
-        statsToCompare = stats;
-        _shakeController.forward(from: 0);
-        
-        // Mostra mensagem de confirmação
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                CachedNetworkImage(
-                  imageUrl: pokemon.imageUrl,
-                  height: 30,
-                  width: 30,
-                ),
-                SizedBox(width: 12),
-                Text('${pokemon.name.toUpperCase()} selecionado para batalha!'),
-              ],
-            ),
-            backgroundColor: Colors.red[700],
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            action: SnackBarAction(
-              label: 'Cancelar',
-              textColor: Colors.white,
-              onPressed: _cancelComparison,
-            ),
-          ),
-        );
-      } else {
-        // Verifica se não está tentando comparar com o mesmo Pokémon
-        if (pokemonToCompare!.id == pokemon.id) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Escolha um Pokémon diferente para a batalha!'),
-              backgroundColor: Colors.red[700],
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          );
-          return;
-        }
-
-        // Se já existe um Pokémon selecionado, navega para a tela de comparação
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PokemonComparisonScreen(
-              pokemon1: pokemonToCompare!,
-              pokemon2: pokemon,
-              stats1: statsToCompare!,
-              stats2: stats,
-            ),
-          ),
-        ).then((_) {
-          setState(() {
-            pokemonToCompare = null;
-            statsToCompare = null;
-          });
-        });
-      }
-    });
-  }
-
   void _cancelComparison() {
     setState(() {
       pokemonToCompare = null;
@@ -404,114 +359,62 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   void _handlePokemonTap(Pokemon pokemon) {
     if (isComparisonMode) {
-      if (_isLoadingStats) return; // Previne múltiplos taps enquanto carrega
+      if (_isLoadingStats) return;
 
       if (pokemonToCompare == null) {
         setState(() => _isLoadingStats = true);
         
-        // Pré-carregar a imagem quando selecionar o primeiro pokémon
         _imagePreloadService.preloadPokemonImage(pokemon);
 
-        // Verifica primeiro se já temos os stats em cache
         if (_statsCache.containsKey(pokemon.id)) {
           setState(() {
             pokemonToCompare = pokemon;
             statsToCompare = _statsCache[pokemon.id];
-            _isLoadingStats = false;
-            _shakeController.reset();
-            _shakeController.forward();
           });
+          setState(() => _isLoadingStats = false);
           return;
         }
 
-        // Se não estiver em cache, busca os stats
         fetchPokemonStats(pokemon.id).then((stats) {
           if (stats != null) {
             setState(() {
               pokemonToCompare = pokemon;
               statsToCompare = stats;
-              _shakeController.reset();
-              _shakeController.forward();
             });
           }
           setState(() => _isLoadingStats = false);
         });
-      } else if (pokemonToCompare!.id != pokemon.id) {
+      } else if (pokemonToCompare!.id == pokemon.id) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Pokémon já selecionado. Selecione outro para comparar!'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      } else {
         setState(() => _isLoadingStats = true);
 
-        // Pré-carregar as imagens antes de navegar para a comparação
         _imagePreloadService.preloadBattle(pokemonToCompare!, pokemon).then((_) {
-          // Verifica o cache primeiro
           if (_statsCache.containsKey(pokemon.id)) {
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (context, animation, secondaryAnimation) => PokemonComparisonScreen(
-                  pokemon1: pokemonToCompare!,
-                  pokemon2: pokemon,
-                  stats1: statsToCompare!,
-                  stats2: _statsCache[pokemon.id]!,
-                ),
-                transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                  const begin = Offset(1.0, 0.0);
-                  const end = Offset.zero;
-                  const curve = Curves.easeInOutCubic;
-                  var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                  var offsetAnimation = animation.drive(tween);
-                  return SlideTransition(position: offsetAnimation, child: child);
-                },
-              ),
-            ).then((_) {
-              setState(() {
-                pokemonToCompare = null;
-                statsToCompare = null;
-                isComparisonMode = false;
-                _isLoadingStats = false;
-              });
-            });
+            _navigateToComparison(pokemon, _statsCache[pokemon.id]!);
             return;
           }
 
-          // Se não estiver em cache, busca os stats
           fetchPokemonStats(pokemon.id).then((stats) {
             if (stats != null) {
-              Navigator.push(
-                context,
-                PageRouteBuilder(
-                  pageBuilder: (context, animation, secondaryAnimation) => PokemonComparisonScreen(
-                    pokemon1: pokemonToCompare!,
-                    pokemon2: pokemon,
-                    stats1: statsToCompare!,
-                    stats2: stats,
-                  ),
-                  transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                    const begin = Offset(1.0, 0.0);
-                    const end = Offset.zero;
-                    const curve = Curves.easeInOutCubic;
-                    var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-                    var offsetAnimation = animation.drive(tween);
-                    return SlideTransition(position: offsetAnimation, child: child);
-                  },
-                ),
-              ).then((_) {
-                setState(() {
-                  pokemonToCompare = null;
-                  statsToCompare = null;
-                  isComparisonMode = false;
-                });
-              });
+              _navigateToComparison(pokemon, stats);
             }
             setState(() => _isLoadingStats = false);
           });
         });
       }
     } else {
-      // Pré-carregar a imagem antes de navegar para os detalhes
       _imagePreloadService.preloadPokemonImage(pokemon).then((_) {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => PokemonDetailScreen(
+            builder: (context) => detail.PokemonDetailScreen(
               pokemonId: pokemon.id,
               pokemonName: pokemon.name,
             ),
@@ -519,6 +422,27 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         );
       });
     }
+  }
+
+  void _navigateToComparison(Pokemon pokemon2, Map<String, int> stats2) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => comparison.PokemonComparisonScreen(
+          pokemon1: pokemonToCompare!,
+          pokemon2: pokemon2,
+          stats1: statsToCompare!,
+          stats2: stats2,
+        ),
+      ),
+    ).then((_) {
+      setState(() {
+        pokemonToCompare = null;
+        statsToCompare = null;
+        isComparisonMode = false;
+        _isLoadingStats = false;
+      });
+    });
   }
 
   Widget buildSearchArea() {
@@ -585,162 +509,115 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   Widget buildPokemonCard(Pokemon pokemon) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isHovered = false;
-        bool isSelected = pokemonToCompare?.id == pokemon.id;
+    bool isSelected = (pokemonToCompare?.id == pokemon.id);
+    Color typeColor = getTypeColor(pokemon.types.first);
 
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true),
-          onExit: (_) => setState(() => isHovered = false),
-          cursor: SystemMouseCursors.click,
-          child: AnimatedBuilder(
-            animation: _shakeController,
-            builder: (context, child) {
-              double shake = isSelected ? 
-                sin(_shakeController.value * 2 * 3.14159) * 3 : 0;
-              return Transform.translate(
-                offset: Offset(shake, 0),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: isSelected ? Border.all(
-                      color: getTypeColor(pokemon.primaryType),
-                      width: 3,
-                    ) : null,
-                    boxShadow: isSelected ? [
-                      BoxShadow(
-                        color: getTypeColor(pokemon.primaryType).withOpacity(0.3),
-                        blurRadius: 12,
-                        spreadRadius: 2,
-                      ),
-                    ] : null,
-                  ),
-                  child: Card(
-                    elevation: isHovered || isSelected ? 8 : 4,
-                    color: isSelected ? 
-                      getTypeColor(pokemon.primaryType).withOpacity(0.1) : 
-                      (isHovered ? Colors.grey[50] : Colors.white),
-                    shadowColor: getTypeColor(pokemon.primaryType).withOpacity(0.3),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Obtemos o tamanho total disponível para o card
+        // Definimos a área da imagem com 65% da altura do card
+        double imageHeight = constraints.maxHeight * 0.65;
+
+        return AnimatedBuilder(
+          animation: _cardAnimationController,
+          builder: (context, child) {
+            double scaleAnim = isSelected
+                ? 1.0 + 0.05 * math.sin(_cardAnimationController.value * 2 * math.pi)
+                : 1.0;
+            return Transform.scale(
+              scale: scaleAnim,
+              child: child,
+            );
+          },
+          child: GestureDetector(
+            onTap: () => _handlePokemonTap(pokemon),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  if (isSelected)
+                    BoxShadow(
+                      color: typeColor.withOpacity(0.5),
+                      blurRadius: 15,
+                      spreadRadius: 3,
                     ),
-                    child: InkWell(
-                      onTap: () => _handlePokemonTap(pokemon),
-                      hoverColor: isComparisonMode ? 
-                        getTypeColor(pokemon.primaryType).withOpacity(0.1) : 
-                        Colors.grey.withOpacity(0.1),
-                      splashColor: isComparisonMode ? 
-                        getTypeColor(pokemon.primaryType).withOpacity(0.2) : 
-                        Colors.grey.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(16),
-                      child: Stack(
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 8,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Área da imagem obtida dinamicamente
+                  Container(
+                    height: imageHeight,
+                    alignment: Alignment.center,
+                    padding: EdgeInsets.all(8),
+                    child: Hero(
+                      tag: 'pokemon-${pokemon.id}',
+                      child: CachedNetworkImage(
+                        imageUrl: pokemon.imageUrl,
+                        // define a altura da imagem com base no cálculo
+                        height: imageHeight,
+                        fit: BoxFit.contain,
+                        placeholder: (context, url) => CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                        ),
+                        errorWidget: (context, url, error) => Icon(Icons.error_outline),
+                      ),
+                    ),
+                  ),
+                  // Área de textos (nome e tipos) ocupa o restante do espaço
+                  Expanded(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Column(
-                            children: [
-                              Expanded(
-                                flex: 5,
-                                child: Padding(
-                                  padding: EdgeInsets.all(12),
-                                  child: Center(
-                                    child: Hero(
-                                      tag: pokemonToCompare?.id == pokemon.id ? 
-                                        'compare-${pokemon.id}' : 
-                                        'pokemon-${pokemon.id}',
-                                      child: CachedNetworkImage(
-                                        imageUrl: pokemon.imageUrl,
-                                        height: 220,
-                                        width: 220,
-                                        fit: BoxFit.contain,
-                                        placeholder: (context, url) => Shimmer.fromColors(
-                                          baseColor: Colors.grey[300]!,
-                                          highlightColor: Colors.grey[100]!,
-                                          child: Container(
-                                            height: 220,
-                                            width: 220,
-                                            decoration: BoxDecoration(
-                                              color: Colors.white,
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                          Text(
+                            pokemon.name.toUpperCase(),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          SizedBox(height: 8),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: pokemon.types.map((type) {
+                              final color = getTypeColor(type);
+                              return Container(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: color,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  type.toUpperCase(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                              ),
-                              SizedBox(height: 8),
-                              Padding(
-                                padding: EdgeInsets.symmetric(horizontal: 8),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      pokemon.name.toUpperCase(),
-                                      style: GoogleFonts.poppins(
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.grey[800],
-                                      ),
-                                      textAlign: TextAlign.center,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    SizedBox(height: 8),
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: pokemon.types.map((type) => 
-                                        Padding(
-                                          padding: EdgeInsets.symmetric(horizontal: 4),
-                                          child: Container(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 8,
-                                              vertical: 4,
-                                            ),
-                                            decoration: BoxDecoration(
-                                              color: getTypeColor(type),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Text(
-                                              type.toUpperCase(),
-                                              style: TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ).toList(),
-                                    ),
-                                    SizedBox(height: 12),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              );
+                            }).toList(),
                           ),
-                          if (isSelected)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: getTypeColor(pokemon.primaryType),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.sports_kabaddi,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
                         ],
                       ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  )
+                ],
+              ),
+            ),
           ),
         );
       },
@@ -791,36 +668,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     }
   }
 
-  Widget _buildTypeChip({required String type, required bool isHovered}) {
-    final typeColor = getTypeColor(type);
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 200),
-      padding: EdgeInsets.symmetric(
-        horizontal: isHovered ? 12 : 8,
-        vertical: isHovered ? 6 : 4,
-      ),
-      decoration: BoxDecoration(
-        color: isHovered ? typeColor : typeColor.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: isHovered ? [
-          BoxShadow(
-            color: typeColor.withOpacity(0.4),
-            blurRadius: 8,
-            offset: Offset(0, 4),
-          ),
-        ] : [],
-      ),
-      child: Text(
-        type.toUpperCase(),
-        style: GoogleFonts.poppins(
-          color: Colors.white,
-          fontWeight: isHovered ? FontWeight.bold : FontWeight.w500,
-          fontSize: isHovered ? 13 : 12,
-        ),
-      ),
-    );
-  }
-
   Color getTypeColor(String type) {
     final colors = {
       'fire': Color(0xFFEE8130),
@@ -861,39 +708,28 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       return Padding(
         padding: const EdgeInsets.all(16.0),
         child: Center(
-          child: Text(
-            searchError,
-            style: TextStyle(color: Colors.red),
-          ),
-        ),
-      );
-    }
-
-    if (searchResults.isNotEmpty) {
-      return AnimationLimiter(
-        child: GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            childAspectRatio: 0.75,
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-          ),
-          itemCount: searchResults.length,
-          itemBuilder: (context, index) {
-            return AnimationConfiguration.staggeredGrid(
-              position: index,
-              duration: const Duration(milliseconds: 375),
-              columnCount: 3,
-              child: ScaleAnimation(
-                child: FadeInAnimation(
-                  child: buildPokemonCard(searchResults[index]),
+          child: Column(
+            children: [
+              Icon(Icons.error_outline, size: 48, color: Colors.red),
+              SizedBox(height: 16),
+              Text(
+                searchError,
+                style: TextStyle(color: Colors.red),
+              ),
+              SizedBox(height: 24),
+              CustomPaint(
+                painter: BannerPatternPainter(
+                  color: Colors.red.withOpacity(0.1),
+                  progress: DateTime.now().millisecondsSinceEpoch / 1000,
+                  type: 'default',
+                ),
+                child: Container(
+                  width: double.infinity,
+                  height: 150,
                 ),
               ),
-            );
-          },
+            ],
+          ),
         ),
       );
     }
@@ -1017,14 +853,16 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
             children: [
               Icon(Icons.search_off, size: 48, color: Colors.grey),
               SizedBox(height: 16),
-              Text(
-                'Nenhum Pokémon encontrado',
-                style: TextStyle(
-                  color: Colors.grey[800],
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
+              CustomPaint(
+                painter: BannerPatternPainter(
+                  color: Colors.grey.withOpacity(0.2),
+                  progress: DateTime.now().millisecondsSinceEpoch / 1000,
+                  type: 'default',
                 ),
-                textAlign: TextAlign.center,
+                child: Container(
+                  width: double.infinity,
+                  height: 200,
+                ),
               ),
             ],
           ),
@@ -1039,7 +877,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         padding: const EdgeInsets.all(12),
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: 3,
-          childAspectRatio: 0.65,
+          childAspectRatio: 0.80,
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
         ),
@@ -1084,7 +922,24 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           SizedBox(width: 8),
           ...getPageRange().map((page) => Padding(
             padding: EdgeInsets.symmetric(horizontal: 4),
-            child: buildPageButton(page, isSelected: page == currentPage),
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: page == currentPage ? Colors.red : Colors.white,
+                foregroundColor: page == currentPage ? Colors.white : Colors.red,
+                elevation: page == currentPage ? 4 : 2,
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: () => changePage(page),
+              child: Text(
+                page.toString(),
+                style: TextStyle(
+                  fontWeight: page == currentPage ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
           )),
           SizedBox(width: 8),
           if (currentPage < 50)
@@ -1104,147 +959,21 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     );
   }
 
-  Widget buildPageButton(int page, {bool isSelected = false}) {
-    return StatefulBuilder(
-      builder: (context, setState) {
-        bool isHovered = false;
-
-        return MouseRegion(
-          onEnter: (_) => setState(() => isHovered = true),
-          onExit: (_) => setState(() => isHovered = false),
-          cursor: SystemMouseCursors.click,
-          child: TweenAnimationBuilder(
-            duration: Duration(milliseconds: 200),
-            curve: Curves.easeOutCubic,
-            tween: Tween<double>(begin: 0, end: isSelected ? 1.1 : (isHovered ? 1.05 : 1.0)),
-            builder: (context, double scale, child) {
-              return Transform.scale(
-                scale: scale,
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isSelected 
-                          ? Colors.red 
-                          : (isHovered ? Colors.red.withOpacity(0.1) : Colors.white),
-                      foregroundColor: isSelected 
-                          ? Colors.white 
-                          : (isHovered ? Colors.red : Colors.black87),
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      elevation: isSelected ? 8 : (isHovered ? 4 : 2),
-                      shadowColor: isSelected 
-                          ? Colors.red.withOpacity(0.4) 
-                          : (isHovered ? Colors.red.withOpacity(0.2) : Colors.black12),
-                    ),
-                    onPressed: () => changePage(page),
-                    child: Text(
-                      page.toString(),
-                      style: GoogleFonts.poppins(
-                        fontSize: 18,
-                        fontWeight: isSelected || isHovered 
-                            ? FontWeight.bold 
-                            : FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: TweenAnimationBuilder(
-          duration: Duration(milliseconds: 1000),
-          tween: Tween<double>(begin: 0, end: 1),
-          builder: (context, double value, child) {
-            return Transform.scale(
-              scale: value,
-              child: ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
-                  colors: [
-                    Colors.blue,
-                    Colors.red,
-                    Colors.yellow,
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  transform: GradientRotation(value * 6.28),
-                ).createShader(bounds),
-                child: Text(
-                  'PokéDex',
-                  style: GoogleFonts.poppins(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 32,
-                    shadows: [
-                      Shadow(
-                        color: Colors.red.withOpacity(0.3),
-                        offset: Offset(2, 2),
-                        blurRadius: 4,
-                      ),
-                      Shadow(
-                        color: Colors.blue.withOpacity(0.3),
-                        offset: Offset(-2, 2),
-                        blurRadius: 4,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+        title: Text('PokéDex'),
         centerTitle: true,
-        flexibleSpace: TweenAnimationBuilder(
-          duration: Duration(milliseconds: 1500),
-          tween: Tween<double>(begin: 0, end: 1),
-          builder: (context, double value, child) {
-            return Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Colors.white,
-                    Colors.red.withOpacity(0.1 * value),
-                    Colors.blue.withOpacity(0.05 * value),
-                    Colors.yellow.withOpacity(0.05 * value),
-                  ],
-                  stops: [0, 0.3, 0.6, 1.0],
-                ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: Transform.rotate(
-                      angle: value * 6.28,
-                      child: Opacity(
-                        opacity: value * 0.3,
-                        child: Icon(
-                          Icons.catching_pokemon,
-                          size: 64,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.red.shade700, Colors.red.shade900],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
@@ -1284,7 +1013,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                       padding: const EdgeInsets.all(12),
                       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 3,
-                        childAspectRatio: 0.65,
+                        childAspectRatio: 0.80,
                         crossAxisSpacing: 12,
                         mainAxisSpacing: 12,
                       ),

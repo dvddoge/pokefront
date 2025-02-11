@@ -13,8 +13,9 @@ class AnimatedCounter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return TweenAnimationBuilder<double>(
-      duration: Duration(milliseconds: 500),
-      tween: Tween<double>(begin: 0, end: value.toDouble()),
+      duration: const Duration(milliseconds: 1500),
+      curve: Curves.easeOutCubic,
+      tween: Tween(begin: 0, end: value.toDouble()),
       builder: (context, value, child) {
         return Text(
           value.toInt().toString(),
