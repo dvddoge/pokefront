@@ -1,52 +1,42 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 class PokeballPainter extends CustomPainter {
   final Color color;
 
-  PokeballPainter({
-    this.color = Colors.white,
-  });
+  PokeballPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0;
 
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = size.width < size.height ? size.width / 2 : size.height / 2;
+    final double centerX = size.width / 2;
+    final double centerY = size.height / 2;
+    final double radius = math.min(size.width, size.height) / 2;
 
     // Desenha o círculo externo
-    canvas.drawCircle(center, radius, paint);
+    canvas.drawCircle(Offset(centerX, centerY), radius, paint);
 
     // Desenha a linha horizontal
-    final linePaint = Paint()
-      ..color = color.withOpacity(0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = radius / 15;
-
     canvas.drawLine(
-      Offset(0, size.height / 2),
-      Offset(size.width, size.height / 2),
-      linePaint,
+      Offset(0, centerY),
+      Offset(size.width, centerY),
+      paint,
     );
 
     // Desenha o círculo central
-    final centerCirclePaint = Paint()
-      ..color = color.withOpacity(0.9)
-      ..style = PaintingStyle.fill;
-
-    canvas.drawCircle(center, radius / 5, centerCirclePaint);
-
-    // Desenha o anel do círculo central
-    final ringPaint = Paint()
-      ..color = color.withOpacity(0.8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = radius / 25;
-
-    canvas.drawCircle(center, radius / 5, ringPaint);
+    canvas.drawCircle(
+      Offset(centerX, centerY),
+      radius / 4,
+      paint,
+    );
   }
 
   @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
+  bool shouldRepaint(PokeballPainter oldDelegate) {
+    return color != oldDelegate.color;
+  }
 } 

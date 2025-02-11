@@ -10,6 +10,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 import '../../models/pokemon.dart';
 import '../../widgets/banner_pattern_painter.dart';
+import '../../widgets/pokeball_painter.dart';
 import '../../services/image_preload_service.dart';
 import '../../services/pokemon_list_service.dart';
 import '../../widgets/subtle_no_results.dart';
@@ -586,70 +587,100 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         ),
                       ),
                     ),
-                  Column(
-                    children: [
-                      Container(
-                        height: imageHeight,
-                        alignment: Alignment.center,
-                        padding: EdgeInsets.all(8),
-                        child: Hero(
-                          tag: 'pokemon-${pokemon.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: pokemon.imageUrl,
-                            height: imageHeight,
-                            fit: BoxFit.contain,
-                            placeholder: (context, url) => CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  CachedNetworkImage(
+                    imageUrl: pokemon.imageUrl,
+                    imageBuilder: (context, imageProvider) => Column(
+                      children: [
+                        Container(
+                          height: imageHeight,
+                          alignment: Alignment.center,
+                          padding: EdgeInsets.all(8),
+                          child: Hero(
+                            tag: 'pokemon-${pokemon.id}',
+                            child: Image(
+                              image: imageProvider,
+                              height: imageHeight,
+                              fit: BoxFit.contain,
                             ),
-                            errorWidget: (context, url, error) => Icon(Icons.error_outline),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                pokemon.name.toUpperCase(),
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  pokemon.name.toUpperCase(),
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              SizedBox(height: 8),
-                              Wrap(
-                                alignment: WrapAlignment.center,
-                                spacing: 4,
-                                runSpacing: 4,
-                                children: pokemon.types.map((type) {
-                                  final color = getTypeColor(type);
-                                  return Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: color,
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Text(
-                                      type.toUpperCase(),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
+                                SizedBox(height: 8),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 4,
+                                  runSpacing: 4,
+                                  children: pokemon.types.map((type) {
+                                    final color = getTypeColor(type);
+                                    return Container(
+                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        borderRadius: BorderRadius.circular(12),
                                       ),
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                            ],
+                                      child: Text(
+                                        type.toUpperCase(),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
                           ),
+                        )
+                      ],
+                    ),
+                    placeholder: (context, url) => Center(
+                      child: AnimatedBuilder(
+                        animation: _loadingAnimationController,
+                        builder: (context, child) {
+                          return Transform.rotate(
+                            angle: _loadingAnimationController.value * 2 * math.pi,
+                            child: CustomPaint(
+                              size: Size(40, 40),
+                              painter: PokeballPainter(
+                                color: Colors.red[300]!,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red[300], size: 32),
+                        SizedBox(height: 8),
+                        Text(
+                          'Erro ao carregar',
+                          style: TextStyle(
+                            color: Colors.red[300],
+                            fontSize: 12,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                      )
-                    ],
+                      ],
+                    ),
                   ),
                 ],
               ),
