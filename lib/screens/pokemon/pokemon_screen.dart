@@ -170,29 +170,28 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       currentSearchQuery = _searchController.text;
       isSearchMode = currentSearchQuery.isNotEmpty;
+      isSearching = true;
+    });
 
-      if (isSearchMode) {
-        // Atualiza os resultados da busca
+    if (isSearchMode) {
+      setState(() {
         allSearchResults = results;
         currentPage = 1;
-        // Aplica os filtros aos resultados da busca
         if (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != RangeValues(0, 1000)) {
           _applyFilters();
         } else {
           searchResults = _getPageItems(currentPage);
           totalPages = results.isEmpty ? 0 : (results.length / pageSize).ceil();
+          isSearching = false;
         }
-      } else {
-        // Se não estiver em modo de busca, mantém a lista inicial
-        if (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != RangeValues(0, 1000)) {
-          _applyFilters();
-        } else {
-          _loadInitialPokemonList();
-        }
-      }
-
-      isSearching = false;
-    });
+      });
+    } else {
+      setState(() {
+        searchResults = [];
+        isSearching = false;
+      });
+      _loadInitialPokemonList();
+    }
   }
 
   void _handleSearchError(String error) {
@@ -215,7 +214,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       selectedTypes = newTypes;
       currentPage = 1;
-      _applyFilters();
+      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
+        _loadInitialPokemonList();
+      } else {
+        _applyFilters();
+      }
     });
   }
 
@@ -223,7 +226,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       selectedGeneration = generation;
       currentPage = 1;
-      _applyFilters();
+      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
+        _loadInitialPokemonList();
+      } else {
+        _applyFilters();
+      }
     });
   }
 
@@ -231,7 +238,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       powerRange = range;
       currentPage = 1;
-      _applyFilters();
+      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
+        _loadInitialPokemonList();
+      } else {
+        _applyFilters();
+      }
     });
   }
 
@@ -247,6 +258,16 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     }
 
     try {
+      // Se não houver filtros ativos e não estiver em modo de busca, carrega a lista inicial
+      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000) && !isSearchMode) {
+        setState(() {
+          searchResults = [];
+          isSearching = false;
+        });
+        await _loadInitialPokemonList();
+        return;
+      }
+
       if (isSearchMode) {
         final filteredResults = allSearchResults.where(_shouldIncludePokemon).toList();
         setState(() {
@@ -628,7 +649,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                   children: pokemon.types.map((type) {
                                     final color = getTypeColor(type);
                                     return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.45),
                                       decoration: BoxDecoration(
                                         color: color,
                                         borderRadius: BorderRadius.circular(12),
@@ -637,9 +659,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                         type.toUpperCase(),
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 12,
+                                          fontSize: 11,
                                           fontWeight: FontWeight.w500,
                                         ),
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
                                     );
                                   }).toList(),
@@ -812,7 +836,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                 SubtleNoResults(
                                   searchQuery: currentSearchQuery,
                                 )
-                              else if (searchResults.isEmpty && !isSearching)
+                              else if (searchResults.isEmpty && !isSearching && (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)))
                                 SubtleNoResults(
                                   searchQuery: isSearchMode ? currentSearchQuery : 
                                     'Nenhum Pokémon encontrado com os filtros selecionados:\n' +
@@ -824,6 +848,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                       if (powerRange != const RangeValues(0, 1000))
                                         'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
                                     ].join('\n'),
+                                )
+                              else if (searchResults.isEmpty && !isSearching)
+                                Center(
+                                  child: CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                  ),
                                 )
                               else
                                 AnimationLimiter(
