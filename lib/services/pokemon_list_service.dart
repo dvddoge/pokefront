@@ -248,27 +248,44 @@ class PokemonListService {
       return _statsCache[pokemonId];
     }
 
-    try {
-      final response = await http.get(
-        Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'),
-      );
-      
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final stats = Map<String, int>.fromEntries(
-          (data['stats'] as List).map(
-            (s) => MapEntry(
-              (s['stat']['name'] as String),
-              (s['base_stat'] as int),
-            ),
-          ),
+    int retryCount = 0;
+    const maxRetries = 3;
+    const initialDelay = Duration(milliseconds: 500);
+
+    while (retryCount < maxRetries) {
+      try {
+        final response = await http.get(
+          Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'),
         );
         
-        _statsCache[pokemonId] = stats;
-        return stats;
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          final stats = Map<String, int>.fromEntries(
+            (data['stats'] as List).map(
+              (s) => MapEntry(
+                (s['stat']['name'] as String),
+                (s['base_stat'] as int),
+              ),
+            ),
+          );
+          
+          _statsCache[pokemonId] = stats;
+          return stats;
+        } else if (response.statusCode == 429) { // Rate limit
+          await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
+          retryCount++;
+          continue;
+        }
+        return null;
+      } catch (e) {
+        if (retryCount < maxRetries - 1) {
+          await Future.delayed(initialDelay * (retryCount + 1));
+          retryCount++;
+          continue;
+        }
+        print('Erro ao buscar stats após $maxRetries tentativas: $e');
+        return null;
       }
-    } catch (e) {
-      print('Erro ao buscar stats: $e');
     }
     return null;
   }
