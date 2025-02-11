@@ -30,26 +30,13 @@ class BannerPatternPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final maxRadius = size.width * 0.4;
     
-    // Animação mais dinâmica para batalha
+    // Círculos estáticos
     for (var i = 0; i < 3; i++) {
-      final phase = progress * 2 * math.pi;
-      final wave = math.sin(phase + i * math.pi / 3) * 12;
-      final scale = 1.0 + math.cos(phase * 0.5 + i * math.pi / 3) * 0.15;
-      final radius = (maxRadius * (0.5 + i * 0.25) + wave) * scale;
-      
-      // Movimento orbital mais pronunciado
-      final orbitRadius = 8.0;
-      final rotationOffset = Offset(
-        math.cos(phase * 1.5 + i * math.pi / 3) * orbitRadius,
-        math.sin(phase * 1.5 + i * math.pi / 3) * orbitRadius
-      );
-      
-      // Adiciona efeito de pulso
-      final pulseOpacity = (math.sin(phase * 2 + i * math.pi / 3) * 0.3 + 0.7).clamp(0.0, 1.0);
-      _paint.color = color.withOpacity(pulseOpacity);
+      final radius = maxRadius * (0.4 + i * 0.25);
+      _paint.color = color.withOpacity(0.15);
       
       canvas.drawCircle(
-        center + rotationOffset,
+        center,
         radius,
         _paint,
       );

@@ -103,13 +103,13 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
   late AnimationController _battleAnimationController;
   late AnimationController _pokemon1AnimationController;
   late AnimationController _pokemon2AnimationController;
-  late AnimationController _vsAnimationController;
+  late AnimationController _floatingAnimationController;
   late Animation<double> _pokemon1SlideAnimation;
   late Animation<double> _pokemon2SlideAnimation;
   late Animation<double> _pokemon1ScaleAnimation;
   late Animation<double> _pokemon2ScaleAnimation;
-  late Animation<double> _vsScaleAnimation;
-  late Animation<double> _floatingAnimation;
+  late Animation<Offset> _pokemon1FloatingAnimation;
+  late Animation<Offset> _pokemon2FloatingAnimation;
   List<BattleParticle> _particles = [];
   bool _showTypeAdvantage = false;
 
@@ -117,45 +117,36 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
   void initState() {
     super.initState();
     
-    // Configurar animação do VS
-    _vsAnimationController = AnimationController(
-      duration: Duration(milliseconds: 4000),
+    // Configurar animação flutuante dos Pokémon
+    _floatingAnimationController = AnimationController(
+      duration: Duration(milliseconds: 2000),
       vsync: this,
-    )..repeat();
+    )..repeat(reverse: true);
 
-    // Criando uma curva personalizada para a escala
-    final Curve scaleCurve = CurveTween(
-      curve: Interval(
-        0.0,
-        1.0,
-        curve: SineCurve(),
-      ),
-    ).curve;
-
-    _vsScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 1.02,
+    _pokemon1FloatingAnimation = Tween<Offset>(
+      begin: Offset(0, -4),
+      end: Offset(0, 4),
     ).animate(CurvedAnimation(
-      parent: _vsAnimationController,
-      curve: scaleCurve,
+      parent: _floatingAnimationController,
+      curve: Curves.easeInOut,
     ));
 
-    _floatingAnimation = Tween<double>(
-      begin: -2.0,
-      end: 2.0,
+    _pokemon2FloatingAnimation = Tween<Offset>(
+      begin: Offset(0, 4),
+      end: Offset(0, -4),
     ).animate(CurvedAnimation(
-      parent: _vsAnimationController,
-      curve: scaleCurve,
+      parent: _floatingAnimationController,
+      curve: Curves.easeInOut,
     ));
 
     // Configurar animações dos Pokémon
     _pokemon1AnimationController = AnimationController(
-      duration: Duration(milliseconds: 1000),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     );
 
     _pokemon2AnimationController = AnimationController(
-      duration: Duration(milliseconds: 1000),
+      duration: Duration(milliseconds: 1500),
       vsync: this,
     );
 
@@ -164,7 +155,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
       end: 0.0,
     ).animate(CurvedAnimation(
       parent: _pokemon1AnimationController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutCirc,
     ));
 
     _pokemon2SlideAnimation = Tween<double>(
@@ -172,46 +163,30 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
       end: 0.0,
     ).animate(CurvedAnimation(
       parent: _pokemon2AnimationController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutCirc,
     ));
 
     _pokemon1ScaleAnimation = Tween<double>(
-      begin: 0.5,
+      begin: 0.8,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _pokemon1AnimationController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutCirc,
     ));
 
     _pokemon2ScaleAnimation = Tween<double>(
-      begin: 0.5,
+      begin: 0.8,
       end: 1.0,
     ).animate(CurvedAnimation(
       parent: _pokemon2AnimationController,
-      curve: Curves.elasticOut,
+      curve: Curves.easeOutCirc,
     ));
 
     // Configurar animação de batalha
     _battleAnimationController = AnimationController(
       duration: Duration(milliseconds: 4000),
       vsync: this,
-    );
-
-    _battleAnimationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _battleAnimationController.reverse();
-      } else if (status == AnimationStatus.dismissed) {
-        _battleAnimationController.forward();
-      }
-    });
-
-    _vsAnimationController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _vsAnimationController.reverse();
-      } else if (status == AnimationStatus.dismissed) {
-        _vsAnimationController.forward();
-      }
-    });
+    )..repeat();
 
     // Iniciar animações
     Future.delayed(Duration(milliseconds: 300), () {
@@ -219,8 +194,6 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
       Future.delayed(Duration(milliseconds: 200), () {
         _pokemon2AnimationController.forward();
         Future.delayed(Duration(milliseconds: 800), () {
-          _battleAnimationController.forward();
-          _vsAnimationController.forward();
           setState(() => _showTypeAdvantage = true);
         });
       });
@@ -232,7 +205,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
     _battleAnimationController.dispose();
     _pokemon1AnimationController.dispose();
     _pokemon2AnimationController.dispose();
-    _vsAnimationController.dispose();
+    _floatingAnimationController.dispose();
     super.dispose();
   }
 
@@ -363,62 +336,45 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                       children: [
                         // VS Text Background
                         Center(
-                          child: AnimatedBuilder(
-                            animation: _vsAnimationController,
-                            builder: (context, child) {
-                              return Stack(
-                                alignment: Alignment.center,
-                                children: [
-                                  // VS principal (grande)
-                                  Transform.translate(
-                                    offset: Offset(0, _floatingAnimation.value),
-                                    child: Transform.scale(
-                                      scale: _vsScaleAnimation.value,
-                                      child: Text(
-                                        'VS',
-                                        style: TextStyle(
-                                          fontSize: 130,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white.withOpacity(0.15),
-                                        ),
-                                      ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // VS principal (grande)
+                              Text(
+                                'VS',
+                                style: TextStyle(
+                                  fontSize: 130,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.15),
+                                ),
+                              ),
+                              // Círculo branco com VS menor
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'VS',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.red[900],
                                     ),
                                   ),
-                                  // Círculo branco com VS menor
-                                  Transform.translate(
-                                    offset: Offset(0, _floatingAnimation.value * 0.5),
-                                    child: Transform.scale(
-                                      scale: _vsScaleAnimation.value,
-                                      child: Container(
-                                        width: 50,
-                                        height: 50,
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withOpacity(0.2),
-                                              blurRadius: 8,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: Center(
-                                          child: Text(
-                                            'VS',
-                                            style: TextStyle(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.bold,
-                                              color: Colors.red[900],
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            },
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         
@@ -431,44 +387,47 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                             builder: (context, child) {
                               return Transform.translate(
                                 offset: Offset(_pokemon1SlideAnimation.value, 0),
-                                child: Transform.scale(
-                                  scale: _pokemon1ScaleAnimation.value,
-                                  child: Column(
-                                    children: [
-                                      Hero(
-                                        tag: 'pokemon-${widget.pokemon1.id}',
-                                        child: CachedNetworkImage(
-                                          imageUrl: widget.pokemon1.imageUrl,
-                                          height: 200,
-                                          fit: BoxFit.contain,
+                                child: Transform.translate(
+                                  offset: _pokemon1FloatingAnimation.value,
+                                  child: Transform.scale(
+                                    scale: _pokemon1ScaleAnimation.value,
+                                    child: Column(
+                                      children: [
+                                        Hero(
+                                          tag: 'pokemon-${widget.pokemon1.id}',
+                                          child: CachedNetworkImage(
+                                            imageUrl: widget.pokemon1.imageUrl,
+                                            height: 200,
+                                            fit: BoxFit.contain,
+                                          ),
                                         ),
-                                      ),
-                                      if (_showTypeAdvantage && typeAdvantage1 > 1.0)
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.withOpacity(0.8),
-                                            borderRadius: BorderRadius.circular(12),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.2),
-                                                blurRadius: 4,
-                                                offset: Offset(0, 2),
+                                        if (_showTypeAdvantage && typeAdvantage1 > 1.0)
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.withOpacity(0.8),
+                                              borderRadius: BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              'Vantagem ${(typeAdvantage1 * 100 - 100).toStringAsFixed(0)}%',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            'Vantagem ${(typeAdvantage1 * 100 - 100).toStringAsFixed(0)}%',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
@@ -485,44 +444,47 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                             builder: (context, child) {
                               return Transform.translate(
                                 offset: Offset(_pokemon2SlideAnimation.value, 0),
-                                child: Transform.scale(
-                                  scale: _pokemon2ScaleAnimation.value,
-                                  child: Column(
-                                    children: [
-                                      Hero(
-                                        tag: 'pokemon-${widget.pokemon2.id}',
-                                        child: CachedNetworkImage(
-                                          imageUrl: widget.pokemon2.imageUrl,
-                                          height: 200,
-                                          fit: BoxFit.contain,
+                                child: Transform.translate(
+                                  offset: _pokemon2FloatingAnimation.value,
+                                  child: Transform.scale(
+                                    scale: _pokemon2ScaleAnimation.value,
+                                    child: Column(
+                                      children: [
+                                        Hero(
+                                          tag: 'pokemon-${widget.pokemon2.id}',
+                                          child: CachedNetworkImage(
+                                            imageUrl: widget.pokemon2.imageUrl,
+                                            height: 200,
+                                            fit: BoxFit.contain,
+                                          ),
                                         ),
-                                      ),
-                                      if (_showTypeAdvantage && typeAdvantage2 > 1.0)
-                                        Container(
-                                          padding: EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Colors.green.withOpacity(0.8),
-                                            borderRadius: BorderRadius.circular(12),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withOpacity(0.2),
-                                                blurRadius: 4,
-                                                offset: Offset(0, 2),
+                                        if (_showTypeAdvantage && typeAdvantage2 > 1.0)
+                                          Container(
+                                            padding: EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.green.withOpacity(0.8),
+                                              borderRadius: BorderRadius.circular(12),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black.withOpacity(0.2),
+                                                  blurRadius: 4,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Text(
+                                              'Vantagem ${(typeAdvantage2 * 100 - 100).toStringAsFixed(0)}%',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.bold,
                                               ),
-                                            ],
-                                          ),
-                                          child: Text(
-                                            'Vantagem ${(typeAdvantage2 * 100 - 100).toStringAsFixed(0)}%',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.bold,
                                             ),
                                           ),
-                                        ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               );
