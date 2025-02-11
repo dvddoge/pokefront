@@ -785,11 +785,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                     shrinkWrap: true,
                                     physics: const NeverScrollableScrollPhysics(),
                                     padding: const EdgeInsets.all(12),
-                                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: 3,
-                                      childAspectRatio: 0.80,
-                                      crossAxisSpacing: 12,
-                                      mainAxisSpacing: 12,
+                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                      crossAxisCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
+                                      childAspectRatio: 0.65,
+                                      crossAxisSpacing: 6,
+                                      mainAxisSpacing: 6,
                                     ),
                                     itemCount: searchResults.length,
                                     itemBuilder: (context, index) {

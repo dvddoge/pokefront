@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 
 class TypeFilter extends StatelessWidget {
   final Map<String, bool> selectedTypes;
@@ -106,7 +107,7 @@ class GenerationFilter extends StatelessWidget {
   }
 }
 
-class PowerRangeFilter extends StatelessWidget {
+class PowerRangeFilter extends StatefulWidget {
   final RangeValues powerRange;
   final Function(RangeValues) onPowerRangeChanged;
 
@@ -115,6 +116,36 @@ class PowerRangeFilter extends StatelessWidget {
     required this.powerRange,
     required this.onPowerRangeChanged,
   }) : super(key: key);
+
+  @override
+  _PowerRangeFilterState createState() => _PowerRangeFilterState();
+}
+
+class _PowerRangeFilterState extends State<PowerRangeFilter> {
+  Timer? _debounce;
+  RangeValues _currentRange = const RangeValues(0, 1000);
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRange = widget.powerRange;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onRangeChanged(RangeValues values) {
+    setState(() => _currentRange = values);
+    
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      widget.onPowerRangeChanged(values);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -131,23 +162,23 @@ class PowerRangeFilter extends StatelessWidget {
         SizedBox(height: 8),
         Row(
           children: [
-            Text(powerRange.start.toInt().toString()),
+            Text(_currentRange.start.toInt().toString()),
             Expanded(
               child: RangeSlider(
-                values: powerRange,
+                values: _currentRange,
                 min: 0,
                 max: 1000,
                 divisions: 100,
                 activeColor: Colors.red[700],
                 inactiveColor: Colors.red[100],
                 labels: RangeLabels(
-                  powerRange.start.round().toString(),
-                  powerRange.end.round().toString(),
+                  _currentRange.start.round().toString(),
+                  _currentRange.end.round().toString(),
                 ),
-                onChanged: onPowerRangeChanged,
+                onChanged: _onRangeChanged,
               ),
             ),
-            Text(powerRange.end.toInt().toString()),
+            Text(_currentRange.end.toInt().toString()),
           ],
         ),
       ],
