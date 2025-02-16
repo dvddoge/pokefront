@@ -18,8 +18,12 @@ class PokemonListService {
     List<Pokemon> filteredPokemons = [];
     int offset = (page - 1) * pageSize;
     
+    // Verificar se há filtros ativos
+    bool hasActiveFilters = (selectedTypes?.values.contains(true) ?? false) ||
+                           (selectedGeneration != null && selectedGeneration > 0) ||
+                           (powerRange != null && powerRange != const RangeValues(0, 1000));
+    
     try {
-      // Primeira requisição para obter a lista básica
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
       );
@@ -39,7 +43,6 @@ class PokemonListService {
           final pokemonUrl = pokemon['url'] as String;
           final pokemonId = int.parse(pokemonUrl.split('/')[6]);
 
-          // Verificar cache primeiro
           if (_pokemonCache.containsKey(pokemonId)) {
             return _pokemonCache[pokemonId]!;
           }
@@ -57,11 +60,19 @@ class PokemonListService {
         return null;
       }).toList();
 
-      // Aguardar todas as requisições terminarem
       final pokemons = (await Future.wait(futures))
           .where((pokemon) => pokemon != null)
           .cast<Pokemon>()
           .toList();
+
+      // Se não houver filtros ativos, retornar todos os Pokémon
+      if (!hasActiveFilters) {
+        final pagePokemons = pokemons.skip(offset).take(pageSize).toList();
+        return {
+          'pokemons': pagePokemons,
+          'total': pokemons.length,
+        };
+      }
 
       // Se precisar dos stats, carregar em paralelo
       if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
@@ -72,29 +83,28 @@ class PokemonListService {
         await Future.wait(statsFutures);
       }
 
-      // Aplicar filtros
+      // Aplicar filtros apenas se houver filtros ativos
       filteredPokemons = pokemons.where((pokemon) {
-        // Filtro de geração
-        if (selectedGeneration != null && selectedGeneration > 0) {
-          int pokemonGen = _getPokemonGeneration(pokemon.id);
-          if (pokemonGen != selectedGeneration) return false;
-        }
-
-        // Filtro de tipos
         if (selectedTypes?.isNotEmpty ?? false) {
           final selectedTypesList = selectedTypes!.entries
               .where((entry) => entry.value)
               .map((entry) => entry.key)
               .toList();
           
-          bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
-            pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-          );
-          
-          if (!hasAnySelectedType) return false;
+          if (selectedTypesList.isNotEmpty) {
+            bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
+              pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
+            );
+            
+            if (!hasAnySelectedType) return false;
+          }
         }
 
-        // Filtro de poder
+        if (selectedGeneration != null && selectedGeneration > 0) {
+          int pokemonGen = _getPokemonGeneration(pokemon.id);
+          if (pokemonGen != selectedGeneration) return false;
+        }
+
         if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
           final stats = _statsCache[pokemon.id];
           if (stats != null) {

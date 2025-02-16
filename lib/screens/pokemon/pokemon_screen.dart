@@ -36,6 +36,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   Timer? _debounce;
   List<Pokemon> searchResults = [];
   List<Pokemon> allSearchResults = []; // Lista completa de resultados
+  List<Pokemon> originalSearchResults = []; // Lista original dos resultados de busca
   int totalPages = 1;
   String currentSearchQuery = '';
   bool isSearchMode = false;
@@ -157,30 +158,29 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     }
   }
 
-  List<Pokemon> _getPageItems(int page) {
+  List<Pokemon> _getPageItems(int page, [List<Pokemon>? sourceList]) {
+    final list = sourceList ?? (isSearchMode ? originalSearchResults : searchResults);
     final startIndex = (page - 1) * pageSize;
-    final endIndex = math.min(startIndex + pageSize, allSearchResults.length);
-    if (startIndex >= allSearchResults.length) return [];
-    return allSearchResults.sublist(startIndex, endIndex);
+    final endIndex = math.min(startIndex + pageSize, list.length);
+    if (startIndex >= list.length) return [];
+    return list.sublist(startIndex, endIndex);
   }
 
   void _handleSearchResults(List<Pokemon> results) {
     if (!mounted) return;
-    
     setState(() {
       currentSearchQuery = _searchController.text;
       isSearchMode = currentSearchQuery.isNotEmpty;
-      isSearching = true;
     });
-
     if (isSearchMode) {
       setState(() {
+        originalSearchResults = results; // armazena os resultados originais da busca
         allSearchResults = results;
         currentPage = 1;
-        if (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != RangeValues(0, 1000)) {
+        if (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)) {
           _applyFilters();
         } else {
-          searchResults = _getPageItems(currentPage);
+          searchResults = _getPageItems(currentPage, results);
           totalPages = results.isEmpty ? 0 : (results.length / pageSize).ceil();
           isSearching = false;
         }
@@ -269,10 +269,9 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       }
 
       if (isSearchMode) {
-        final filteredResults = allSearchResults.where(_shouldIncludePokemon).toList();
+        final filteredResults = originalSearchResults.where(_shouldIncludePokemon).toList();
         setState(() {
-          allSearchResults = filteredResults;
-          searchResults = _getPageItems(currentPage);
+          searchResults = _getPageItems(currentPage, filteredResults);
           totalPages = filteredResults.isEmpty ? 0 : (filteredResults.length / pageSize).ceil();
           isSearching = false;
         });
