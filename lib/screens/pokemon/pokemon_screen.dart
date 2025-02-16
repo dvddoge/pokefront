@@ -40,7 +40,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   int totalPages = 1;
   String currentSearchQuery = '';
   bool isSearchMode = false;
-  bool isComparisonMode = false;
+  bool isComparisonMode = false; 
   Pokemon? pokemonToCompare;
   Map<String, int>? statsToCompare;
   bool _isLoadingStats = false;
@@ -548,19 +548,13 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
             double scaleAnim = isSelected
                 ? 1.0 + 0.03 * math.sin(_cardAnimationController.value * 2 * math.pi)
                 : 1.0;
-            
-            double rotateAnim = isSelected
-                ? 0.02 * math.sin(_cardAnimationController.value * 2 * math.pi)
-                : 0.0;
 
             if (isSelected && !_cardAnimationController.isAnimating) {
               _cardAnimationController.repeat();
             }
 
             return Transform(
-              transform: Matrix4.identity()
-                ..scale(scaleAnim)
-                ..rotateZ(rotateAnim),
+              transform: Matrix4.identity()..scale(scaleAnim),
               alignment: Alignment.center,
               child: child,
             );
@@ -573,13 +567,31 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
+                border: isSelected ? Border.all(
+                  color: typeColor.withOpacity(0.8),
+                  width: 2.5,
+                ) : null,
                 boxShadow: [
-                  if (isSelected)
+                  if (isSelected) ...[
+                    // Borda neon interna
                     BoxShadow(
-                      color: typeColor.withOpacity(0.5),
-                      blurRadius: 20,
+                      color: typeColor.withOpacity(0.6),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                    // Borda neon externa
+                    BoxShadow(
+                      color: typeColor.withOpacity(0.4),
+                      blurRadius: 12,
                       spreadRadius: 2,
                     ),
+                    // Brilho neon distante
+                    BoxShadow(
+                      color: typeColor.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: 4,
+                    ),
+                  ],
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
@@ -595,12 +607,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           gradient: LinearGradient(
-                            begin: Alignment(-1.0 + _cardAnimationController.value * 2, 0),
-                            end: Alignment(-1.0 + _cardAnimationController.value * 2 + 0.5, 0),
+                            begin: Alignment(-2.0 + _cardAnimationController.value * 4, 0),
+                            end: Alignment(-2.0 + _cardAnimationController.value * 4 + 1, 0),
                             colors: [
-                              Colors.white.withOpacity(0.0),
-                              Colors.white.withOpacity(0.2),
-                              Colors.white.withOpacity(0.0),
+                              typeColor.withOpacity(0.0),
+                              typeColor.withOpacity(0.15),
+                              typeColor.withOpacity(0.0),
                             ],
                             stops: [0.0, 0.5, 1.0],
                           ),
@@ -689,21 +701,26 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         },
                       ),
                     ),
-                    errorWidget: (context, url, error) => Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.error_outline, color: Colors.red[300], size: 32),
-                        SizedBox(height: 8),
-                        Text(
-                          'Erro ao carregar',
-                          style: TextStyle(
-                            color: Colors.red[300],
-                            fontSize: 12,
+                    errorWidget: (context, url, error) => Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error_outline, color: Colors.red[300], size: 32),
+                          SizedBox(height: 8),
+                          Text(
+                            'Erro ao carregar',
+                            style: TextStyle(
+                              color: Colors.red[300],
+                              fontSize: 12,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
+                    errorListener: (error) {
+                      print('Erro ao carregar imagem: $error');
+                    },
                   ),
                 ],
               ),
