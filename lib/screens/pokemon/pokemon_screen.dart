@@ -20,6 +20,7 @@ import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
+import '../pokemon_battle_screen.dart';
 
 class PokemonScreen extends StatefulWidget {
   @override
@@ -40,7 +41,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   int totalPages = 1;
   String currentSearchQuery = '';
   bool isSearchMode = false;
-  bool isComparisonMode = false; 
+  bool isComparisonMode = false;
+  bool isBattleMode = false;
   Pokemon? pokemonToCompare;
   Map<String, int>? statsToCompare;
   bool _isLoadingStats = false;
@@ -342,6 +344,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _handlePokemonTap(Pokemon pokemon) {
     if (isComparisonMode) {
       _handleComparisonTap(pokemon);
+    } else if (isBattleMode) {
+      _handleBattleTap(pokemon);
     } else {
       _handleDetailTap(pokemon);
     }
@@ -388,6 +392,47 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     }
   }
 
+  void _handleBattleTap(Pokemon pokemon) {
+    if (_isLoadingStats) return;
+
+    if (pokemonToCompare == null) {
+      setState(() => _isLoadingStats = true);
+      _selectedPokemonNotifier.value = pokemon;
+      
+      _imagePreloadService.preloadPokemonImage(pokemon);
+
+      _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
+        if (stats != null) {
+          setState(() {
+            pokemonToCompare = pokemon;
+            statsToCompare = stats;
+          });
+        }
+        setState(() => _isLoadingStats = false);
+      });
+    } else if (pokemonToCompare!.id == pokemon.id) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pokémon já selecionado. Selecione outro para a batalha!'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    } else {
+      setState(() => _isLoadingStats = true);
+      _selectedPokemonNotifier.value = pokemon;
+
+      _imagePreloadService.preloadBattle(pokemonToCompare!, pokemon).then((_) {
+        _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
+          if (stats != null) {
+            _navigateToBattle(pokemon);
+          }
+          setState(() => _isLoadingStats = false);
+        });
+      });
+    }
+  }
+
   void _handleDetailTap(Pokemon pokemon) {
     _imagePreloadService.preloadPokemonImage(pokemon).then((_) {
       Navigator.push(
@@ -425,12 +470,35 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     });
   }
 
-  void _cancelComparison() {
+  void _navigateToBattle(Pokemon pokemon2) {
+    _cardAnimationController.stop();
+    _selectedPokemonNotifier.value = null;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PokemonBattleScreen(
+          pokemon1: pokemonToCompare!,
+          pokemon2: pokemon2,
+        ),
+      ),
+    ).then((_) {
+      setState(() {
+        pokemonToCompare = null;
+        statsToCompare = null;
+        isComparisonMode = false;
+        isBattleMode = false;
+        _isLoadingStats = false;
+      });
+    });
+  }
+
+  void _cancelAction() {
     _cardAnimationController.stop();
     setState(() {
       pokemonToCompare = null;
       statsToCompare = null;
       isComparisonMode = false;
+      isBattleMode = false;
     });
     _selectedPokemonNotifier.value = null;
   }
@@ -445,6 +513,28 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               Icon(Icons.sports_kabaddi, color: Colors.white),
               SizedBox(width: 12),
               Text('Selecione o primeiro Pokémon para batalhar!'),
+            ],
+          ),
+          backgroundColor: Colors.red[700],
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    });
+  }
+
+  void _handleBattleMode() {
+    setState(() {
+      isBattleMode = true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.catching_pokemon, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Selecione o primeiro Pokémon para a batalha!'),
             ],
           ),
           backgroundColor: Colors.red[700],
@@ -982,29 +1072,56 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isComparisonMode) 
+          if (isComparisonMode || isBattleMode) 
             Padding(
               padding: EdgeInsets.only(bottom: 8),
               child: FloatingActionButton(
-                heroTag: 'cancel_comparison',
+                heroTag: 'cancel_action',
                 mini: true,
                 backgroundColor: Colors.red[700],
                 elevation: 4,
                 child: Icon(Icons.close, color: Colors.white),
-                onPressed: _cancelComparison,
+                onPressed: _cancelAction,
               ),
             ),
-          FloatingActionButton(
-            heroTag: 'start_comparison',
-            backgroundColor: isComparisonMode ? Colors.amber[700] : Colors.red[700],
-            elevation: 6,
-            child: Icon(
-              isComparisonMode ? Icons.sports_kabaddi : Icons.compare,
-              color: Colors.white,
-              size: 28,
+          if (!isComparisonMode && !isBattleMode) ...[
+            Padding(
+              padding: EdgeInsets.only(bottom: 8),
+              child: FloatingActionButton(
+                heroTag: 'start_battle',
+                backgroundColor: Colors.blue[700],
+                elevation: 6,
+                child: Icon(
+                  Icons.catching_pokemon,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                onPressed: _handleBattleMode,
+              ),
             ),
-            onPressed: isComparisonMode ? null : _handleComparisonMode,
-          ),
+            FloatingActionButton(
+              heroTag: 'start_comparison',
+              backgroundColor: Colors.red[700],
+              elevation: 6,
+              child: Icon(
+                Icons.compare,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: _handleComparisonMode,
+            ),
+          ] else
+            FloatingActionButton(
+              heroTag: 'action_button',
+              backgroundColor: isBattleMode ? Colors.blue[700] : Colors.red[700],
+              elevation: 6,
+              child: Icon(
+                isBattleMode ? Icons.catching_pokemon : Icons.compare,
+                color: Colors.white,
+                size: 28,
+              ),
+              onPressed: null,
+            ),
         ],
       ),
       bottomSheet: isComparisonMode ? Container(
