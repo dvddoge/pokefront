@@ -673,72 +673,31 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                     ],
                   ),
                 ),
-                child: Stack(
-                  children: [
-                    // Padrão de fundo com círculos e linhas
-                    ...List.generate(20, (index) {
-                      final random = math.Random(index);
-                      final size = random.nextDouble() * 100 + 50;
-                      final initialX = random.nextDouble() * MediaQuery.of(context).size.width;
-                      final initialY = random.nextDouble() * MediaQuery.of(context).size.height;
-
-                      return Positioned(
-                        left: initialX + math.sin(_backgroundAnimation.value * 2 * math.pi) * 10,
-                        top: initialY + math.cos(_backgroundAnimation.value * 2 * math.pi) * 10,
-                        child: Container(
-                          width: size,
-                          height: size,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                      );
-                    }),
-
-                    // Linhas diagonais
-                    ...List.generate(15, (index) {
-                      final random = math.Random(index);
-                      final startX = random.nextDouble() * MediaQuery.of(context).size.width;
-                      final endX = startX + random.nextDouble() * 200 - 100;
-
-                      return Positioned(
-                        left: startX + math.sin(_backgroundAnimation.value * 2 * math.pi) * 20,
-                        top: random.nextDouble() * MediaQuery.of(context).size.height,
-                        child: Transform.rotate(
-                          angle: random.nextDouble() * math.pi / 4,
-                          child: Container(
-                            width: 100,
-                            height: 1,
-                            color: Colors.white.withOpacity(0.1),
-                          ),
-                        ),
-                      );
-                    }),
-                  ],
+                child: CustomPaint(
+                  painter: BattleBackgroundPainter(
+                    animation: _backgroundAnimation.value,
+                  ),
+                  size: Size.infinite,
                 ),
               );
             },
           ),
 
           // Partículas de brilho
-          ...List.generate(15, (index) {
+          ...List.generate(8, (index) {
             final random = math.Random(index);
-            final size = random.nextDouble() * 8 + 4;
+            final size = random.nextDouble() * 6 + 3;
             final initialX = random.nextDouble() * MediaQuery.of(context).size.width;
             final initialY = random.nextDouble() * MediaQuery.of(context).size.height;
 
             return AnimatedBuilder(
               animation: _backgroundAnimation,
               builder: (context, child) {
-                final phase = index * (math.pi / 7.5);
+                final phase = index * (math.pi / 4);
                 final currentX = initialX + 
-                    math.sin(_backgroundAnimation.value * 2 * math.pi + phase) * 30;
+                    math.sin(_backgroundAnimation.value * 2 * math.pi + phase) * 20;
                 final currentY = initialY + 
-                    math.cos(_backgroundAnimation.value * 2 * math.pi + phase) * 30;
+                    math.cos(_backgroundAnimation.value * 2 * math.pi + phase) * 20;
 
                 return Positioned(
                   left: currentX,
@@ -748,10 +707,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                     height: size,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withOpacity(0.3),
+                      color: Colors.white.withOpacity(0.4),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withOpacity(0.3),
                           blurRadius: size,
                           spreadRadius: size / 2,
                         ),
@@ -907,7 +866,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
 
               // Movimentos
               if (isPlayer1Turn) Container(
-                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                width: MediaQuery.of(context).size.width,
+                padding: EdgeInsets.symmetric(vertical: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   boxShadow: [
@@ -932,11 +892,15 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                       ),
                     ),
                     SizedBox(height: 16),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      alignment: WrapAlignment.center,
-                      children: pokemon1Moves.map(_buildMoveButton).toList(),
+                    Container(
+                      width: MediaQuery.of(context).size.width,
+                      padding: EdgeInsets.symmetric(horizontal: 8),
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        alignment: WrapAlignment.center,
+                        children: pokemon1Moves.map(_buildMoveButton).toList(),
+                      ),
                     ),
                   ],
                 ),
@@ -961,4 +925,34 @@ class PokemonMove {
     required this.type,
     required this.accuracy,
   });
+}
+
+class BattleBackgroundPainter extends CustomPainter {
+  final double animation;
+
+  BattleBackgroundPainter({required this.animation});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    // Desenha círculos concêntricos com branco forte
+    for (int i = 0; i < 5; i++) {
+      paint.color = Colors.white.withOpacity(0.8 - (i * 0.12));
+      final radius = 100.0 + (i * 80.0) + (math.sin(animation * 2 * math.pi) * 10);
+      canvas.drawCircle(
+        Offset(size.width * 0.5, size.height * 0.5),
+        radius,
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(BattleBackgroundPainter oldDelegate) {
+    return oldDelegate.animation != animation;
+  }
 } 
