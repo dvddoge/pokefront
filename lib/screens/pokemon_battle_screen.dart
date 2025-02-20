@@ -23,6 +23,13 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
   late AnimationController _battleAnimationController;
   late AnimationController _shakeAnimationController;
   late AnimationController _damageAnimationController;
+  late AnimationController _backgroundAnimationController;
+  late AnimationController _floatingAnimationController;
+  late AnimationController _flashAnimationController;
+  late AnimationController _attackAnimationController;
+  late Animation<Offset> _attackAnimation;
+  late Animation<double> _backgroundAnimation;
+  late Animation<double> _floatingAnimation;
   
   late double pokemon1MaxHP;
   late double pokemon2MaxHP;
@@ -57,13 +64,74 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       vsync: this,
       duration: Duration(milliseconds: 200),
     );
+
+    _attackAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 600),
+    );
+
+    _attackAnimation = TweenSequence<Offset>([
+      TweenSequenceItem(
+        tween: Tween<Offset>(
+          begin: Offset.zero,
+          end: Offset(-0.2, -0.1),
+        ),
+        weight: 25.0,
+      ),
+      TweenSequenceItem(
+        tween: Tween<Offset>(
+          begin: Offset(-0.2, -0.1),
+          end: Offset(0.2, 0.1),
+        ),
+        weight: 50.0,
+      ),
+      TweenSequenceItem(
+        tween: Tween<Offset>(
+          begin: Offset(0.2, 0.1),
+          end: Offset.zero,
+        ),
+        weight: 25.0,
+      ),
+    ]).animate(CurvedAnimation(
+      parent: _attackAnimationController,
+      curve: Curves.easeInOut,
+    ));
+
+    _backgroundAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 8000),
+    )..repeat();
+
+    _floatingAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 3000),
+    )..repeat();
+
+    _flashAnimationController = AnimationController(
+      vsync: this,
+      duration: Duration(milliseconds: 150),
+    );
+
+    _backgroundAnimation = CurvedAnimation(
+      parent: _backgroundAnimationController,
+      curve: Curves.easeInOut,
+    );
+
+    _floatingAnimation = CurvedAnimation(
+      parent: _floatingAnimationController,
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
   void dispose() {
+    _attackAnimationController.dispose();
     _battleAnimationController.dispose();
     _shakeAnimationController.dispose();
     _damageAnimationController.dispose();
+    _backgroundAnimationController.dispose();
+    _floatingAnimationController.dispose();
+    _flashAnimationController.dispose();
     super.dispose();
   }
 
@@ -194,7 +262,6 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       battleLog = '${isPlayer1Turn ? widget.pokemon1.name : widget.pokemon2.name} usa ${move.name}!';
     });
 
-    // Calcula se o ataque acertou baseado na accuracy
     bool hitSuccess = math.Random().nextDouble() * 100 <= move.accuracy;
 
     if (!hitSuccess) {
@@ -211,11 +278,16 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       return;
     }
 
-    // Animação de ataque
-    await _battleAnimationController.forward();
-    await _battleAnimationController.reverse();
+    // Sequência de animação de ataque
+    await _attackAnimationController.forward();
+    await _attackAnimationController.reverse();
 
-    // Animação de dano
+    // Flash de ataque
+    _flashAnimationController.forward();
+    await Future.delayed(Duration(milliseconds: 50));
+    await _flashAnimationController.reverse();
+
+    // Animação de dano no oponente
     await _shakeAnimationController.forward();
     await _shakeAnimationController.reverse();
 
@@ -513,129 +585,290 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('Batalha Pokémon'),
-        backgroundColor: Colors.red[700],
+        backgroundColor: Colors.red[900],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          Expanded(
-            child: Stack(
-              children: [
-                // Fundo da batalha
-                Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: NetworkImage('https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/quick-powder.png'),
-                      fit: BoxFit.cover,
-                      opacity: 0.1,
-                    ),
-                  ),
-                ),
-                
-                // Informações dos Pokémon
-                Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildPokemonInfo(widget.pokemon2, pokemon2HP, pokemon2MaxHP, false),
-                        ],
-                      ),
-                      Spacer(),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildPokemonInfo(widget.pokemon1, pokemon1HP, pokemon1MaxHP, true),
-                        ],
-                      ),
+          // Fundo animado com vermelho mais intenso
+          AnimatedBuilder(
+            animation: _backgroundAnimation,
+            builder: (context, child) {
+              return Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.red[900]!.withOpacity(0.95),
+                      Colors.red[800]!.withOpacity(0.9),
+                      Colors.red[700]!.withOpacity(0.85),
                     ],
                   ),
                 ),
+                child: Stack(
+                  children: [
+                    // Padrão de fundo com círculos e linhas
+                    ...List.generate(20, (index) {
+                      final random = math.Random(index);
+                      final size = random.nextDouble() * 100 + 50;
+                      final initialX = random.nextDouble() * MediaQuery.of(context).size.width;
+                      final initialY = random.nextDouble() * MediaQuery.of(context).size.height;
 
-                // Pokémon
-                Positioned(
-                  right: 30,
-                  top: 80,
-                  child: AnimatedBuilder(
-                    animation: _shakeAnimationController,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(
-                          math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
-                          0,
+                      return Positioned(
+                        left: initialX + math.sin(_backgroundAnimation.value * 2 * math.pi) * 10,
+                        top: initialY + math.cos(_backgroundAnimation.value * 2 * math.pi) * 10,
+                        child: Container(
+                          width: size,
+                          height: size,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 1,
+                            ),
+                          ),
                         ),
-                        child: child,
                       );
-                    },
-                    child: CachedNetworkImage(
-                      imageUrl: widget.pokemon2.imageUrl,
-                      height: 150,
-                    ),
-                  ),
-                ),
-                Positioned(
-                  left: 30,
-                  bottom: 80,
-                  child: AnimatedBuilder(
-                    animation: _shakeAnimationController,
-                    builder: (context, child) {
-                      return Transform.translate(
-                        offset: Offset(
-                          math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
-                          0,
+                    }),
+
+                    // Linhas diagonais
+                    ...List.generate(15, (index) {
+                      final random = math.Random(index);
+                      final startX = random.nextDouble() * MediaQuery.of(context).size.width;
+                      final endX = startX + random.nextDouble() * 200 - 100;
+
+                      return Positioned(
+                        left: startX + math.sin(_backgroundAnimation.value * 2 * math.pi) * 20,
+                        top: random.nextDouble() * MediaQuery.of(context).size.height,
+                        child: Transform.rotate(
+                          angle: random.nextDouble() * math.pi / 4,
+                          child: Container(
+                            width: 100,
+                            height: 1,
+                            color: Colors.white.withOpacity(0.1),
+                          ),
                         ),
-                        child: child,
                       );
-                    },
-                    child: CachedNetworkImage(
-                      imageUrl: widget.pokemon1.imageUrl,
-                      height: 150,
-                    ),
-                  ),
+                    }),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
 
-          // Log de batalha
-          Container(
-            padding: EdgeInsets.all(8),
-            color: Colors.white,
-            width: double.infinity,
-            child: Text(
-              battleLog,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
+          // Partículas de brilho
+          ...List.generate(15, (index) {
+            final random = math.Random(index);
+            final size = random.nextDouble() * 8 + 4;
+            final initialX = random.nextDouble() * MediaQuery.of(context).size.width;
+            final initialY = random.nextDouble() * MediaQuery.of(context).size.height;
+
+            return AnimatedBuilder(
+              animation: _backgroundAnimation,
+              builder: (context, child) {
+                final phase = index * (math.pi / 7.5);
+                final currentX = initialX + 
+                    math.sin(_backgroundAnimation.value * 2 * math.pi + phase) * 30;
+                final currentY = initialY + 
+                    math.cos(_backgroundAnimation.value * 2 * math.pi + phase) * 30;
+
+                return Positioned(
+                  left: currentX,
+                  top: currentY,
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white.withOpacity(0.3),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.white.withOpacity(0.2),
+                          blurRadius: size,
+                          spreadRadius: size / 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            );
+          }),
+
+          Column(
+            children: [
+              Expanded(
+                child: Stack(
+                  children: [
+                    // Flash de ataque
+                    AnimatedBuilder(
+                      animation: _flashAnimationController,
+                      builder: (context, child) {
+                        return Container(
+                          color: Colors.white.withOpacity(_flashAnimationController.value * 0.3),
+                        );
+                      },
+                    ),
+
+                    // Informações dos Pokémon
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildPokemonInfo(widget.pokemon2, pokemon2HP, pokemon2MaxHP, false),
+                            ],
+                          ),
+                          Spacer(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildPokemonInfo(widget.pokemon1, pokemon1HP, pokemon1MaxHP, true),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Pokémon 2 (Oponente)
+                    Positioned(
+                      right: 30,
+                      top: 80,
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _shakeAnimationController,
+                          _floatingAnimation,
+                          _attackAnimationController
+                        ]),
+                        builder: (context, child) {
+                          Offset finalOffset = Offset.zero;
+                          
+                          // Aplica animação de ataque apenas quando é a vez do oponente
+                          if (!isPlayer1Turn) {
+                            finalOffset += _attackAnimation.value;
+                          }
+                          
+                          // Aplica tremor apenas quando recebe dano
+                          if (isPlayer1Turn) {
+                            finalOffset += Offset(
+                              math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
+                              0,
+                            );
+                          }
+                          
+                          // Aplica flutuação constante
+                          finalOffset += Offset(
+                            math.sin(_floatingAnimation.value * 2 * math.pi) * 5,
+                            math.cos(_floatingAnimation.value * 2 * math.pi) * 8,
+                          );
+
+                          return Transform.translate(
+                            offset: finalOffset,
+                            child: Transform.rotate(
+                              angle: math.sin(_floatingAnimation.value * 2 * math.pi) * 0.05,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: CachedNetworkImage(
+                          imageUrl: widget.pokemon2.imageUrl,
+                          height: 150,
+                        ),
+                      ),
+                    ),
+
+                    // Pokémon 1 (Jogador)
+                    Positioned(
+                      left: 30,
+                      bottom: 80,
+                      child: AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _shakeAnimationController,
+                          _floatingAnimation,
+                          _attackAnimationController
+                        ]),
+                        builder: (context, child) {
+                          Offset finalOffset = Offset.zero;
+                          
+                          // Aplica animação de ataque apenas quando é a vez do jogador
+                          if (isPlayer1Turn) {
+                            finalOffset += _attackAnimation.value;
+                          }
+                          
+                          // Aplica tremor apenas quando recebe dano
+                          if (!isPlayer1Turn) {
+                            finalOffset += Offset(
+                              math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
+                              0,
+                            );
+                          }
+                          
+                          // Aplica flutuação constante
+                          finalOffset += Offset(
+                            math.sin(_floatingAnimation.value * 2 * math.pi + math.pi) * 5,
+                            math.cos(_floatingAnimation.value * 2 * math.pi + math.pi) * 8,
+                          );
+
+                          return Transform.translate(
+                            offset: finalOffset,
+                            child: Transform.rotate(
+                              angle: math.sin(_floatingAnimation.value * 2 * math.pi + math.pi) * 0.05,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: CachedNetworkImage(
+                          imageUrl: widget.pokemon1.imageUrl,
+                          height: 150,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
 
-          // Movimentos
-          if (isPlayer1Turn) Container(
-            padding: EdgeInsets.all(16),
-            color: Colors.white,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: pokemon1Moves.sublist(0, math.min(2, pokemon1Moves.length))
-                      .map(_buildMoveButton)
-                      .toList(),
-                ),
-                if (pokemon1Moves.length > 2) ...[
-                  SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: pokemon1Moves.sublist(2, pokemon1Moves.length)
-                        .map(_buildMoveButton)
-                        .toList(),
+              // Log de batalha
+              Container(
+                padding: EdgeInsets.all(8),
+                color: Colors.white,
+                width: double.infinity,
+                child: Text(
+                  battleLog,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
                   ),
-                ],
-              ],
-            ),
+                ),
+              ),
+
+              // Movimentos
+              if (isPlayer1Turn) Container(
+                padding: EdgeInsets.all(16),
+                color: Colors.white,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: pokemon1Moves.sublist(0, math.min(2, pokemon1Moves.length))
+                          .map(_buildMoveButton)
+                          .toList(),
+                    ),
+                    if (pokemon1Moves.length > 2) ...[
+                      SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: pokemon1Moves.sublist(2, pokemon1Moves.length)
+                            .map(_buildMoveButton)
+                            .toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
