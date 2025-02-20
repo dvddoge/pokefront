@@ -16,11 +16,11 @@ import '../../services/pokemon_list_service.dart';
 import '../../widgets/subtle_no_results.dart';
 import '../pokemon_comparison_screen.dart' as comparison;
 import '../pokemon_detail_screen.dart' as detail;
+import '../battle/pokemon_battle_screen.dart';
 import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
-import '../pokemon_battle_screen.dart';
 
 class PokemonScreen extends StatefulWidget {
   @override
