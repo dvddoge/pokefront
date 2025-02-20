@@ -506,50 +506,117 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     final IconData typeIcon = getTypeIcon(move.type);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 4),
-      child: Tooltip(
-        message: 'Dano: ${move.damage.toInt()} | Precisão: ${move.accuracy.toInt()}%',
-        child: ElevatedButton(
-          onPressed: isAnimating || !isPlayer1Turn ? null : () => _executeMove(move),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: typeColor,
-            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: Container(
+        width: MediaQuery.of(context).size.width * 0.42,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: typeColor.withOpacity(0.3),
+              blurRadius: 8,
+              offset: Offset(0, 2),
             ),
-            elevation: 4,
+          ],
+          border: Border.all(
+            color: typeColor.withOpacity(0.5),
+            width: 2,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Column(
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: isAnimating || !isPlayer1Turn ? null : () => _executeMove(move),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    move.name,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                    ),
+                  Row(
+                    children: [
+                      Icon(
+                        typeIcon,
+                        color: typeColor,
+                        size: 24,
+                      ),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          move.name.toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                            fontFamily: 'Roboto',
+                            letterSpacing: 0.5,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'Dano: ${move.damage.toInt()}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 11,
-                    ),
+                  SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: typeColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.flash_on,
+                              color: typeColor,
+                              size: 16,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'PWR ${move.damage.toInt()}',
+                              style: TextStyle(
+                                color: typeColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.gps_fixed,
+                              color: Colors.grey[600],
+                              size: 16,
+                            ),
+                            SizedBox(width: 4),
+                            Text(
+                              'ACC ${move.accuracy.toInt()}%',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
-              SizedBox(width: 6),
-              Icon(
-                typeIcon,
-                color: Colors.white,
-                size: 16,
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -840,26 +907,37 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
 
               // Movimentos
               if (isPlayer1Turn) Container(
-                padding: EdgeInsets.all(16),
-                color: Colors.white,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: Offset(0, -4),
+                    ),
+                  ],
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: pokemon1Moves.sublist(0, math.min(2, pokemon1Moves.length))
-                          .map(_buildMoveButton)
-                          .toList(),
-                    ),
-                    if (pokemon1Moves.length > 2) ...[
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: pokemon1Moves.sublist(2, pokemon1Moves.length)
-                            .map(_buildMoveButton)
-                            .toList(),
+                    Text(
+                      'ESCOLHA SEU MOVIMENTO',
+                      style: TextStyle(
+                        color: Colors.grey[800],
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        letterSpacing: 1,
+                        fontFamily: 'Roboto',
                       ),
-                    ],
+                    ),
+                    SizedBox(height: 16),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: pokemon1Moves.map(_buildMoveButton).toList(),
+                    ),
                   ],
                 ),
               ),
