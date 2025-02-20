@@ -394,6 +394,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
             children: [
               Text(
                 pokemon.name.toUpperCase(),
@@ -716,14 +717,14 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                       child: Column(
                         children: [
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.end,
                             children: [
                               _buildPokemonInfo(widget.pokemon2, pokemon2HP, pokemon2MaxHP, false),
                             ],
                           ),
                           Spacer(),
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.start,
                             children: [
                               _buildPokemonInfo(widget.pokemon1, pokemon1HP, pokemon1MaxHP, true),
                             ],
@@ -735,7 +736,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                     // Pokémon 2 (Oponente)
                     Positioned(
                       right: 30,
-                      top: 80,
+                      top: 120,
                       child: AnimatedBuilder(
                         animation: Listenable.merge([
                           _shakeAnimationController,
@@ -745,12 +746,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         builder: (context, child) {
                           Offset finalOffset = Offset.zero;
                           
-                          // Aplica animação de ataque apenas quando é a vez do oponente
                           if (!isPlayer1Turn) {
                             finalOffset += _attackAnimation.value;
                           }
                           
-                          // Aplica tremor apenas quando recebe dano
                           if (isPlayer1Turn) {
                             finalOffset += Offset(
                               math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
@@ -758,7 +757,6 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                             );
                           }
                           
-                          // Aplica flutuação constante
                           finalOffset += Offset(
                             math.sin(_floatingAnimation.value * 2 * math.pi) * 5,
                             math.cos(_floatingAnimation.value * 2 * math.pi) * 8,
@@ -774,7 +772,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         },
                         child: CachedNetworkImage(
                           imageUrl: widget.pokemon2.imageUrl,
-                          height: 150,
+                          height: 200,
                         ),
                       ),
                     ),
@@ -792,12 +790,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         builder: (context, child) {
                           Offset finalOffset = Offset.zero;
                           
-                          // Aplica animação de ataque apenas quando é a vez do jogador
                           if (isPlayer1Turn) {
                             finalOffset += _attackAnimation.value;
                           }
                           
-                          // Aplica tremor apenas quando recebe dano
                           if (!isPlayer1Turn) {
                             finalOffset += Offset(
                               math.sin(_shakeAnimationController.value * math.pi * 8) * 5,
@@ -805,7 +801,6 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                             );
                           }
                           
-                          // Aplica flutuação constante
                           finalOffset += Offset(
                             math.sin(_floatingAnimation.value * 2 * math.pi + math.pi) * 5,
                             math.cos(_floatingAnimation.value * 2 * math.pi + math.pi) * 8,
@@ -821,7 +816,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         },
                         child: CachedNetworkImage(
                           imageUrl: widget.pokemon1.imageUrl,
-                          height: 150,
+                          height: 200,
                         ),
                       ),
                     ),
