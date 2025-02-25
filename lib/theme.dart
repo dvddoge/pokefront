@@ -1,63 +1,82 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static ThemeData get theme => ThemeData(
-    primaryColor: Colors.red,
+  static final ThemeData theme = ThemeData(
+    primarySwatch: Colors.red,
+    primaryColor: Colors.red[700],
     scaffoldBackgroundColor: Colors.grey[100],
-    appBarTheme: const AppBarTheme(
-      backgroundColor: Colors.white,
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.red[700],
+      foregroundColor: Colors.white,
       elevation: 0,
-      iconTheme: IconThemeData(color: Colors.red),
-    ),
-    cardTheme: CardTheme(
-      elevation: 4,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
     ),
     textTheme: TextTheme(
-      displayLarge: GoogleFonts.poppins(
+      displayLarge: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 32,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+      displayMedium: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 28,
+        fontWeight: FontWeight.bold,
+        color: Colors.black87,
+      ),
+      displaySmall: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 24,
         fontWeight: FontWeight.bold,
         color: Colors.black87,
       ),
-      displayMedium: GoogleFonts.poppins(
+      headlineMedium: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 20,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w600,
         color: Colors.black87,
       ),
-      bodyLarge: GoogleFonts.poppins(
+      titleLarge: TextStyle(
+        fontFamily: 'Roboto',
+        fontSize: 18,
+        fontWeight: FontWeight.w600,
+        color: Colors.black87,
+      ),
+      bodyLarge: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 16,
         color: Colors.black87,
       ),
-      bodyMedium: GoogleFonts.poppins(
+      bodyMedium: TextStyle(
+        fontFamily: 'Roboto',
         fontSize: 14,
-        color: Colors.black54,
+        color: Colors.black87,
       ),
+    ),
+    colorScheme: ColorScheme.fromSwatch(
+      primarySwatch: Colors.red,
+      accentColor: Colors.redAccent,
+      brightness: Brightness.light,
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.red,
+        backgroundColor: Colors.red[700],
         foregroundColor: Colors.white,
-        textStyle: GoogleFonts.poppins(
-          fontWeight: FontWeight.bold,
-        ),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
         ),
+        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: Colors.white,
-      border: OutlineInputBorder(
+    cardTheme: CardTheme(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
       ),
-      hintStyle: GoogleFonts.poppins(
-        color: Colors.grey[400],
-      ),
+      clipBehavior: Clip.antiAlias,
     ),
   );
+}
+
+class NavigationService {
+  static final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 }

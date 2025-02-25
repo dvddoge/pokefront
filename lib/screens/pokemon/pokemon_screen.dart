@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:http/http.dart' as http;
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
@@ -860,7 +859,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               ).createShader(bounds),
               child: Text(
                 'PokéDex',
-                style: GoogleFonts.rubikMonoOne(
+                style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.w500,
                   letterSpacing: 1,
