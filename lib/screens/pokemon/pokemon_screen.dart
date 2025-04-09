@@ -16,6 +16,7 @@ import '../../widgets/subtle_no_results.dart';
 import '../pokemon_comparison_screen.dart' as comparison;
 import '../pokemon_detail_screen.dart' as detail;
 import '../battle/pokemon_battle_screen.dart';
+import '../battle/components/battle_transition.dart';
 import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
@@ -47,6 +48,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   bool _isLoadingStats = false;
   final Map<int, Map<String, int>> _statsCache = {};
   
+  // Novos estados para controle da transição
+  bool _showClosingTransition = false;
+  Pokemon? _pokemon1ForBattle;
+  Pokemon? _pokemon2ForBattle;
+  
   // Serviços
   final ImagePreloadService _imagePreloadService = ImagePreloadService();
   final PokemonListService _pokemonListService = PokemonListService();
@@ -75,6 +81,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     super.initState();
     _setupAnimationControllers();
     _loadInitialPokemonList();
+    _selectedPokemonNotifier.addListener(_handlePokemonSelectionChange);
+    _comparisonModeNotifier.addListener(_handleComparisonModeChange);
   }
 
   void _setupAnimationControllers() {
@@ -435,8 +443,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     } else if (pokemonToCompare!.id == pokemon.id) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pokémon já selecionado. Selecione outro para comparar!'),
-          backgroundColor: Colors.red,
+          content: Text('Selecione outro Pokémon para comparar!'),
+          backgroundColor: Colors.orange[700],
         ),
       );
       return;
@@ -444,13 +452,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       setState(() => _isLoadingStats = true);
       _selectedPokemonNotifier.value = pokemon;
 
-      _imagePreloadService.preloadBattle(pokemonToCompare!, pokemon).then((_) {
-        _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
-          if (stats != null) {
-            _navigateToComparison(pokemon, stats);
-          }
-          setState(() => _isLoadingStats = false);
-        });
+      _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
+        if (stats != null && mounted) {
+          _navigateToComparison(pokemon, stats);
+        }
+        if (mounted) setState(() => _isLoadingStats = false);
       });
     }
   }
@@ -458,40 +464,45 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _handleBattleTap(Pokemon pokemon) {
     if (_isLoadingStats) return;
 
-    if (pokemonToCompare == null) {
+    if (_pokemon1ForBattle == null) {
       setState(() => _isLoadingStats = true);
       _selectedPokemonNotifier.value = pokemon;
       
       _imagePreloadService.preloadPokemonImage(pokemon);
 
-      _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
-        if (stats != null) {
-          setState(() {
-            pokemonToCompare = pokemon;
-            statsToCompare = stats;
-          });
-        }
-        setState(() => _isLoadingStats = false);
+      setState(() {
+        _pokemon1ForBattle = pokemon;
+        _isLoadingStats = false;
       });
-    } else if (pokemonToCompare!.id == pokemon.id) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Pokémon já selecionado. Selecione outro para a batalha!'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${pokemon.name} selecionado! Escolha o oponente.'), backgroundColor: Colors.blue[700]));
+
+    } else if (_pokemon1ForBattle!.id == pokemon.id) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pokémon já selecionado. Escolha o oponente!'), backgroundColor: Colors.orange[700]));
+
     } else {
       setState(() => _isLoadingStats = true);
-      _selectedPokemonNotifier.value = pokemon;
+      _pokemon2ForBattle = pokemon;
+      _selectedPokemonNotifier.value = null;
 
-      _imagePreloadService.preloadBattle(pokemonToCompare!, pokemon).then((_) {
-        _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
-          if (stats != null) {
-            _navigateToBattle(pokemon);
-          }
-          setState(() => _isLoadingStats = false);
-        });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Iniciando batalha: ${_pokemon1ForBattle!.name} vs ${_pokemon2ForBattle!.name}'), backgroundColor: Colors.green[700]));
+
+      _imagePreloadService.preloadBattle(_pokemon1ForBattle!, _pokemon2ForBattle!).then((_) {
+        if (mounted) {
+          setState(() {
+            _isLoadingStats = false;
+            _showClosingTransition = true;
+            isBattleMode = false;
+          });
+        }
+      }).catchError((error) {
+        print("Erro ao pre-carregar imagens da batalha: $error");
+        if (mounted) {
+          setState(() {
+            _isLoadingStats = false;
+            _showClosingTransition = true;
+            isBattleMode = false;
+          });
+        }
       });
     }
   }
@@ -533,26 +544,38 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     });
   }
 
-  void _navigateToBattle(Pokemon pokemon2) {
-    _cardAnimationController.stop();
-    _selectedPokemonNotifier.value = null;
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => PokemonBattleScreen(
-          pokemon1: pokemonToCompare!,
-          pokemon2: pokemon2,
+  void _navigateToBattle() {
+    if (_pokemon1ForBattle != null && _pokemon2ForBattle != null) {
+      print('Navegando para a tela de batalha...');
+      if (mounted) {
+          setState(() {
+              _selectedPokemonNotifier.value = null;
+              isBattleMode = false;
+          });
+      }
+      Navigator.push(
+        context,
+        PageRouteBuilder(
+          pageBuilder: (context, animation1, animation2) => PokemonBattleScreen(
+            pokemon1: _pokemon1ForBattle!,
+            pokemon2: _pokemon2ForBattle!,
+            playOpeningAnimation: true,
+          ),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
         ),
-      ),
-    ).then((_) {
-      setState(() {
-        pokemonToCompare = null;
-        statsToCompare = null;
-        isComparisonMode = false;
-        isBattleMode = false;
-        _isLoadingStats = false;
+      ).then((_) {
+         _pokemon1ForBattle = null;
+         _pokemon2ForBattle = null;
+         if(mounted) setState((){});
       });
-    });
+    } else {
+       print("Erro: Pokémon para batalha não definidos ao tentar navegar.");
+    }
+
+    if (mounted) {
+      setState(() => _showClosingTransition = false);
+    }
   }
 
   void _cancelAction() {
@@ -909,6 +932,18 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',
                 height: 24,
                 width: 24,
+                errorBuilder: (context, error, stackTrace) => Icon(Icons.error_outline, color: Colors.white.withOpacity(0.7), size: 24),
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.7)),
+                    ),
+                  );
+                },
               ),
             ),
             SizedBox(width: 12),
@@ -924,12 +959,13 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               child: Text(
                 'PokéDex',
                 style: TextStyle(
-                  fontSize: 32,
+                  fontSize: 22,
                   fontWeight: FontWeight.w500,
+                  color: Colors.white,
                   letterSpacing: 1,
                   shadows: [
                     Shadow(
-                      color: Colors.red.shade900.withOpacity(0.3),
+                      color: Colors.black.withOpacity(0.2),
                       offset: Offset(1, 1),
                       blurRadius: 2,
                     ),
@@ -943,11 +979,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         flexibleSpace: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [
-                Color(0xFFE53935),
-                Color(0xFFD32F2F),
-                Color(0xFFC62828),
-              ],
+              colors: [Colors.red[700]!, Colors.red[900]!],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -955,6 +987,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
+        actions: [],
       ),
       body: Stack(
         children: [
@@ -1130,6 +1163,18 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 ),
               ),
             ),
+          if (_showClosingTransition)
+            Positioned.fill(
+              child: BattleTransition(
+                phase: TransitionPhase.closing,
+                onMidpoint: _navigateToBattle,
+                onTransitionComplete: () {
+                   if (mounted && _showClosingTransition) {
+                     setState(() => _showClosingTransition = false);
+                   }
+                },
+              ),
+            ),
         ],
       ),
       floatingActionButton: Column(
@@ -1227,5 +1272,39 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         ),
       ) : null,
     );
+  }
+
+  void _toggleBattleMode() {
+    setState(() {
+      isBattleMode = !isBattleMode;
+      isComparisonMode = false;
+      pokemonToCompare = null;
+      _selectedPokemonNotifier.value = null;
+      _pokemon1ForBattle = null;
+      _pokemon2ForBattle = null;
+      _comparisonModeNotifier.value = false;
+    });
+  }
+
+  void _handlePokemonSelectionChange() {
+    // Lógica existente, se houver
+  }
+
+  void _handleComparisonModeChange() {
+    if (!_comparisonModeNotifier.value) {
+       setState(() {
+          pokemonToCompare = null;
+          _selectedPokemonNotifier.value = null;
+          isComparisonMode = false;
+          isBattleMode = false;
+       });
+    } else {
+       setState(() {
+          isComparisonMode = true;
+          isBattleMode = false;
+          pokemonToCompare = null;
+          _selectedPokemonNotifier.value = null;
+       });
+    }
   }
 } 

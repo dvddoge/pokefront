@@ -45,168 +45,58 @@ class BattleBackgroundPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Desenha círculos concêntricos no centro
+    // Desenha apenas os círculos concêntricos pulsantes
     _drawConcentricCircles(canvas, size);
-    
-    // Desenha formas geométricas no centro
-    _drawGeometricShapes(canvas, size);
   }
   
   void _drawConcentricCircles(Canvas canvas, Size size) {
     final circlePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..color = Colors.white.withOpacity(0.4);
+      ..style = PaintingStyle.stroke;
+      // ..strokeWidth = 2.0; // Ajustaremos a largura dinamicamente
+      // ..color = Colors.white.withOpacity(0.4); // Ajustaremos cor/opacidade dinamicamente
     
-    // Centro entre os dois Pokémon (centro da tela, um pouco acima do meio)
-    final center = Offset(size.width * 0.5, size.height * 0.35);
+    // Centro da tela, ajustado mais para cima para não ser coberto pela UI inferior
+    final center = Offset(size.width * 0.5, size.height * 0.30); // Ajustado de 0.35 para 0.30
     
-    // Desenha círculos concêntricos pulsantes
-    for (int i = 0; i < 4; i++) {
-      final circlePhase = (i / 4) + animation;
-      final circleProgress = (circlePhase % 1.0);
+    // Número de círculos pulsantes
+    final int numCircles = 5;
+    // Raio máximo (um pouco menor que metade da largura para não tocar as bordas)
+    final double maxRadius = size.width * 0.4;
+
+    for (int i = 0; i < numCircles; i++) {
+      // Calcula uma fase de animação para cada círculo, ligeiramente defasada
+      // Usando seno para criar um movimento de pulsação suave (vai de -1 a 1)
+      final double phaseOffset = i / numCircles;
+      final double pulse = math.sin((animation + phaseOffset) * math.pi * 2);
       
-      // Varia a opacidade com base na fase
-      final opacity = 0.4 - (circleProgress * 0.2);
+      // Normaliza o pulso para 0 a 1 (0 = menor, 1 = maior)
+      final double normalizedPulse = (pulse + 1) / 2;
+
+      // Calcula o raio atual baseado na pulsação
+      final double currentRadius = maxRadius * normalizedPulse;
       
-      if (opacity > 0) {
-        circlePaint.color = Colors.white.withOpacity(opacity);
+      // Calcula a opacidade e a largura do traço baseado na pulsação
+      // Mais opaco e grosso quando maior, mais tênue e fino quando menor
+      final double opacity = 0.1 + (normalizedPulse * 0.3); // Opacidade entre 0.1 e 0.4
+      final double strokeWidth = 1.0 + (normalizedPulse * 2.0); // Largura entre 1.0 e 3.0
+
+      if (currentRadius > 0 && opacity > 0.1) { // Desenha apenas se visível
+        circlePaint
+          ..color = Colors.white.withOpacity(opacity)
+          ..strokeWidth = strokeWidth;
         
-        // Raio do círculo - cresce com o progresso
-        // Tamanho maior para ocupar mais espaço entre os Pokémon
-        final radius = circleProgress * size.width * 0.3;
-        
-        canvas.drawCircle(center, radius, circlePaint);
+        canvas.drawCircle(center, currentRadius, circlePaint);
       }
     }
   }
   
-  void _drawGeometricShapes(Canvas canvas, Size size) {
-    // Centro entre os dois Pokémon (centro da tela, um pouco acima do meio)
-    final center = Offset(size.width * 0.5, size.height * 0.35);
-    
-    // Desenha retângulos que giram
-    _drawRotatingRectangles(canvas, size, center);
-    
-    // Desenha triângulos que giram
-    _drawRotatingTriangles(canvas, size, center);
-    
-    // Desenha hexágono que gira
-    _drawRotatingHexagon(canvas, size, center);
-  }
-  
-  void _drawRotatingRectangles(Canvas canvas, Size size, Offset center) {
-    final rectPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = Colors.white.withOpacity(0.3);
-    
-    // Desenha retângulos que giram
-    for (int i = 0; i < 3; i++) {
-      // Direção de rotação
-      final angle = animation * math.pi * 2;
-      
-      // Tamanho do retângulo - maior para ocupar mais espaço
-      final rectSize = 80.0 + (i * 60.0);
-      
-      // Salva o estado atual do canvas
-      canvas.save();
-      
-      // Translada para o centro
-      canvas.translate(center.dx, center.dy);
-      
-      // Rotaciona o canvas
-      canvas.rotate(angle + (i * math.pi / 6));
-      
-      // Desenha o retângulo centralizado
-      final rect = Rect.fromCenter(
-        center: Offset.zero,
-        width: rectSize,
-        height: rectSize,
-      );
-      
-      canvas.drawRect(rect, rectPaint);
-      
-      // Restaura o estado do canvas
-      canvas.restore();
-    }
-  }
-  
-  void _drawRotatingTriangles(Canvas canvas, Size size, Offset center) {
-    final trianglePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = Colors.white.withOpacity(0.3);
-    
-    // Desenha triângulos que giram
-    for (int i = 0; i < 2; i++) {
-      // Direção de rotação oposta aos retângulos
-      final angle = -animation * math.pi * 2;
-      
-      // Salva o estado atual do canvas
-      canvas.save();
-      
-      // Translada para o centro
-      canvas.translate(center.dx, center.dy);
-      
-      // Rotaciona o canvas
-      canvas.rotate(angle + (i * math.pi / 3));
-      
-      // Tamanho do triângulo - maior para ocupar mais espaço
-      final triangleSize = 120.0 + (i * 60.0);
-      
-      // Desenha o triângulo
-      final path = Path();
-      path.moveTo(0, -triangleSize / 2);
-      path.lineTo(triangleSize / 2, triangleSize / 2);
-      path.lineTo(-triangleSize / 2, triangleSize / 2);
-      path.close();
-      
-      canvas.drawPath(path, trianglePaint);
-      
-      // Restaura o estado do canvas
-      canvas.restore();
-    }
-  }
-  
-  void _drawRotatingHexagon(Canvas canvas, Size size, Offset center) {
-    final hexagonPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5
-      ..color = Colors.white.withOpacity(0.3);
-    
-    // Salva o estado atual do canvas
-    canvas.save();
-    
-    // Translada para o centro
-    canvas.translate(center.dx, center.dy);
-    
-    // Rotaciona o canvas em velocidade diferente
-    canvas.rotate(animation * math.pi);
-    
-    // Tamanho do hexágono
-    final hexagonSize = 100.0;
-    
-    // Desenha o hexágono
-    final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final angle = (i * math.pi / 3);
-      final x = hexagonSize * math.cos(angle);
-      final y = hexagonSize * math.sin(angle);
-      
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    
-    canvas.drawPath(path, hexagonPaint);
-    
-    // Restaura o estado do canvas
-    canvas.restore();
-  }
+  // Remover as funções de desenho de formas geométricas
+  /*
+  void _drawGeometricShapes(Canvas canvas, Size size) { ... }
+  void _drawRotatingRectangles(Canvas canvas, Size size, Offset center) { ... }
+  void _drawRotatingTriangles(Canvas canvas, Size size, Offset center) { ... }
+  void _drawRotatingHexagon(Canvas canvas, Size size, Offset center) { ... }
+  */
 
   @override
   bool shouldRepaint(BattleBackgroundPainter oldDelegate) {

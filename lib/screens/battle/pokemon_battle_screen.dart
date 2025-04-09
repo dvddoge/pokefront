@@ -19,11 +19,13 @@ import 'utils/animation_utils.dart';
 class PokemonBattleScreen extends StatefulWidget {
   final Pokemon pokemon1;
   final Pokemon pokemon2;
+  final bool playOpeningAnimation;
 
   const PokemonBattleScreen({
     Key? key,
     required this.pokemon1,
     required this.pokemon2,
+    this.playOpeningAnimation = true,
   }) : super(key: key);
 
   @override
@@ -55,6 +57,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
   List<PokemonMove> pokemon2Moves = [];
   bool _showTransition = true;
   bool _battleScreenReady = false;
+  late bool _isOpeningTransitionPlaying;
 
   @override
   void initState() {
@@ -62,6 +65,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     
     try {
       print('Inicializando tela de batalha');
+      _isOpeningTransitionPlaying = widget.playOpeningAnimation;
       _setupAnimations();
       
       // Inicializa valores padrão para evitar erros
@@ -449,65 +453,15 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     );
   }
 
-  // Chamado quando a animação de transição está na fase de cortinas fechadas
-  void _onTransitionMidpoint() {
-    if (!mounted) return;
-    
-    try {
-      print('Ponto médio da transição atingido');
-      print('Estado atual - isLoading: $isLoading, _battleScreenReady: $_battleScreenReady');
-      
-      // Quando chegamos ao meio da animação (cortinas fechadas),
-      // verificamos se os dados já foram carregados
-      if (isLoading) {
-        print('Dados ainda não carregados no ponto médio da transição');
-        // Se ainda estiver carregando, atualizamos o estado para mostrar que estamos prontos
-        // quando os dados terminarem de carregar
-        setState(() {
-          _battleScreenReady = true;
-        });
-      } else {
-        print('Dados já carregados, tela de batalha pronta');
-        setState(() {
-          _battleScreenReady = true;
-        });
-      }
-    } catch (e) {
-      print('Erro no callback de ponto médio: $e');
-      // Em caso de erro, ainda tentamos marcar a tela como pronta
-      if (mounted) {
-        setState(() => _battleScreenReady = true);
-      }
-    }
-  }
-
-  // Chamado quando a animação de transição está completa
-  void _onTransitionComplete() {
-    if (!mounted) return;
-    
-    try {
-      print('Animação de transição completa');
-      print('Estado atual - _showTransition: $_showTransition, _battleScreenReady: $_battleScreenReady');
-      
-      // Quando a animação termina, mostramos a tela de batalha e iniciamos a música
-      setState(() {
-        _showTransition = false;
-        if (isLoading) {
-          battleLog = 'Carregando dados do Pokémon...';
-        }
-      });
-      
-      print('Transição concluída, mostrando tela de batalha (_showTransition: $_showTransition)');
-      
-      // Não iniciamos a música no ambiente web para evitar erros
-      // _startBattleMusic();
-    } catch (e) {
-      print('Erro no callback de conclusão da transição: $e');
-      // Em caso de erro, ainda tentamos mostrar a tela de batalha
-      if (mounted) {
-        setState(() => _showTransition = false);
-      }
-    }
+  // Callback para quando a transição de ABERTURA terminar
+  void _onOpeningTransitionComplete() {
+     if (!mounted) return;
+     print("Animação de abertura completa.");
+     setState(() {
+       _isOpeningTransitionPlaying = false; // Esconde a transição
+     });
+     // Pode iniciar a música de batalha aqui
+     // _startBattleMusic();
   }
 
   @override
@@ -526,174 +480,183 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
         ),
         body: Stack(
           children: [
-            // Conteúdo da batalha (oculto enquanto a transição está ativa)
-            if (!_showTransition) Stack(
-              children: [
-                // Fundo animado
-                BattleBackground(animation: _backgroundAnimation),
+            // Conteúdo da batalha
+            // Renderiza assim que _battleScreenReady for true (após _loadPokemonData)
+            if (_battleScreenReady)
+              Stack(
+                 children: [
+                   // Fundo animado
+                   BattleBackground(animation: _backgroundAnimation),
+                   Column(
+                     children: [
+                        Expanded(
+                          child: Stack(
+                           children: [
+                             // Flash de ataque
+                             AnimatedBuilder(
+                               animation: _flashAnimationController,
+                               builder: (context, child) {
+                                 return Container(
+                                   color: Colors.white.withOpacity(_flashAnimationController.value * 0.3),
+                                 );
+                               },
+                             ),
 
-                Column(
-                  children: [
-                    Expanded(
-                      child: Stack(
-                        children: [
-                          // Flash de ataque
-                          AnimatedBuilder(
-                            animation: _flashAnimationController,
-                            builder: (context, child) {
-                              return Container(
-                                color: Colors.white.withOpacity(_flashAnimationController.value * 0.3),
-                              );
-                            },
+                             // Informações dos Pokémon
+                             Padding(
+                               padding: EdgeInsets.all(16),
+                               child: Column(
+                                 children: [
+                                   Row(
+                                     mainAxisAlignment: MainAxisAlignment.end,
+                                     children: [
+                                       PokemonInfo(
+                                         pokemon: widget.pokemon2,
+                                         hp: pokemon2HP,
+                                         maxHp: pokemon2MaxHP,
+                                         isLeft: false,
+                                       ),
+                                     ],
+                                   ),
+                                   Spacer(),
+                                   Row(
+                                     mainAxisAlignment: MainAxisAlignment.start,
+                                     children: [
+                                       PokemonInfo(
+                                         pokemon: widget.pokemon1,
+                                         hp: pokemon1HP,
+                                         maxHp: pokemon1MaxHP,
+                                         isLeft: true,
+                                       ),
+                                     ],
+                                   ),
+                                 ],
+                               ),
+                             ),
+
+                             // Pokémon 2 (Oponente)
+                             Positioned(
+                               right: 30,
+                               top: 120,
+                               child: _buildPokemonImage(
+                                 widget.pokemon2,
+                                 false,
+                                 _floatingAnimation,
+                                 _attackAnimation,
+                               ),
+                             ),
+
+                             // Pokémon 1 (Jogador)
+                             Positioned(
+                               left: 30,
+                               bottom: 80,
+                               child: _buildPokemonImage(
+                                 widget.pokemon1,
+                                 true,
+                                 _floatingAnimation,
+                                 _attackAnimation,
+                               ),
+                             ),
+                           ],
                           ),
-
-                          // Informações dos Pokémon
-                          Padding(
-                            padding: EdgeInsets.all(16),
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    PokemonInfo(
-                                      pokemon: widget.pokemon2,
-                                      hp: pokemon2HP,
-                                      maxHp: pokemon2MaxHP,
-                                      isLeft: false,
-                                    ),
-                                  ],
-                                ),
-                                Spacer(),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.start,
-                                  children: [
-                                    PokemonInfo(
-                                      pokemon: widget.pokemon1,
-                                      hp: pokemon1HP,
-                                      maxHp: pokemon1MaxHP,
-                                      isLeft: true,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Pokémon 2 (Oponente)
-                          Positioned(
-                            right: 30,
-                            top: 120,
-                            child: _buildPokemonImage(
-                              widget.pokemon2,
-                              false,
-                              _floatingAnimation,
-                              _attackAnimation,
-                            ),
-                          ),
-
-                          // Pokémon 1 (Jogador)
-                          Positioned(
-                            left: 30,
-                            bottom: 80,
-                            child: _buildPokemonImage(
-                              widget.pokemon1,
-                              true,
-                              _floatingAnimation,
-                              _attackAnimation,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    // Log de batalha
-                    Container(
-                      padding: EdgeInsets.all(8),
-                      color: Colors.white,
-                      width: double.infinity,
-                      child: Text(
-                        battleLog,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w500,
                         ),
-                      ),
-                    ),
-
-                    // Movimentos
-                    if (isPlayer1Turn) Container(
-                      width: MediaQuery.of(context).size.width,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.only(
-                          topLeft: Radius.circular(24),
-                          topRight: Radius.circular(24),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withOpacity(0.1),
-                            blurRadius: 8,
-                            offset: Offset(0, -4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                            margin: EdgeInsets.only(bottom: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.red[700],
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.red.shade900.withOpacity(0.3),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                        // Log de batalha
+                        Container(
+                          padding: EdgeInsets.all(8),
+                          color: Colors.white,
+                          width: double.infinity,
+                          child: Text(
+                            battleLog,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w500,
                             ),
-                            child: Text(
-                              'ESCOLHA SEU MOVIMENTO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                letterSpacing: 1,
-                                fontFamily: 'Roboto',
+                          ),
+                        ),
+                        // Movimentos (Container já deve estar sem o if isPlayer1Turn)
+                        Container(
+                          width: MediaQuery.of(context).size.width,
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(24),
+                              topRight: Radius.circular(24),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: Offset(0, -4),
                               ),
-                            ),
+                            ],
                           ),
-                          Container(
-                            width: MediaQuery.of(context).size.width,
-                            padding: EdgeInsets.symmetric(horizontal: 8),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.center,
-                              children: pokemon1Moves.map((move) => MoveButton(
-                                move: move,
-                                isDisabled: isAnimating,
-                                onMoveSelected: _executeMove,
-                              )).toList(),
-                            ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                margin: EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.red[700],
+                                  borderRadius: BorderRadius.circular(20),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.red.shade900.withOpacity(0.3),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Text(
+                                  'ESCOLHA SEU MOVIMENTO',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    letterSpacing: 1,
+                                    fontFamily: 'Roboto',
+                                  ),
+                                ),
+                              ),
+                              Container(
+                                width: MediaQuery.of(context).size.width,
+                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                child: Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  alignment: WrapAlignment.center,
+                                  children: pokemon1Moves.map((move) => MoveButton(
+                                    move: move,
+                                    isDisabled: isAnimating,
+                                    onMoveSelected: _executeMove,
+                                  )).toList(),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                        ),
+                     ],
+                   ),
+                 ],
+              ),
 
-            // Animação de transição (sempre visível no início)
-            if (_showTransition)
+            // Indicador de Loading
+            // Mostra se os dados ainda não carregaram E a transição de abertura não está tocando
+            if (!_battleScreenReady && !_isOpeningTransitionPlaying)
+               Center(child: CircularProgressIndicator()),
+
+            // Transição de ABERTURA
+            // Mostra se o estado _isOpeningTransitionPlaying for true
+            if (_isOpeningTransitionPlaying)
               BattleTransition(
-                onTransitionComplete: _onTransitionComplete,
-                onMidpoint: _onTransitionMidpoint,
-                waitForBattleScreen: false, // Não esperamos pela tela de batalha, a animação roda completa
+                phase: TransitionPhase.opening, // Executa apenas a abertura
+                onMidpoint: () {
+                   // Chamado no início da fase de abertura.
+                   // _battleScreenReady pode ou não ser true aqui, dependendo do _loadPokemonData.
+                   print("BattleTransition (opening): Midpoint Callback Triggered. Battle Ready: $_battleScreenReady");
+                },
+                onTransitionComplete: _onOpeningTransitionComplete, // Callback para esconder a transição
               ),
           ],
         ),

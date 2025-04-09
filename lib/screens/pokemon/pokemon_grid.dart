@@ -278,11 +278,21 @@ class _PokemonGridState extends State<PokemonGrid> {
                       child: CachedNetworkImage(
                         imageUrl: pokemon.imageUrl,
                         height: imageHeight,
+                        memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
                         fit: BoxFit.contain,
-                        placeholder: (context, url) => CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                        placeholder: (context, url) => Center(
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                            strokeWidth: 2.0,
+                          ),
                         ),
-                        errorWidget: (context, url, error) => Icon(Icons.error_outline),
+                        errorWidget: (context, url, error) => Center(
+                          child: Icon(
+                            Icons.error_outline,
+                            color: Colors.grey[400],
+                            size: imageHeight * 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   ),
