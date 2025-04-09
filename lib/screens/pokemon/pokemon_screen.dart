@@ -136,27 +136,91 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   Future<void> _loadInitialPokemonList() async {
-    setState(() => isSearching = true);
+    if (!mounted) return;
+    
+    setState(() {
+      isSearching = true;
+      searchError = '';
+    });
+    
     try {
+      print('Iniciando carregamento da lista de Pokémon');
+      
+      // Adicionar um timeout para evitar espera infinita
       final result = await _pokemonListService.fetchPokemonList(
         page: currentPage,
         selectedTypes: selectedTypes,
         selectedGeneration: selectedGeneration,
         powerRange: powerRange,
-      );
-      if (mounted) {
+      ).timeout(Duration(seconds: 20), onTimeout: () {
+        print('Timeout ao carregar Pokémon');
+        return {
+          'pokemons': _getDefaultPokemons(),
+          'total': 10
+        };
+      });
+      
+      if (!mounted) return;
+      
+      setState(() {
+        // Recebe os resultados do serviço
+        final List<Pokemon> fetchedPokemons = result['pokemons'];
+        final int totalFetched = result['total'];
+        
+        searchResults = fetchedPokemons;
+        totalPages = (totalFetched / pageSize).ceil();
+        isSearching = false;
+        
+        // Verifica se a *página específica* está vazia, mas a busca geral não falhou
+        if (fetchedPokemons.isEmpty && totalFetched > 0 && currentPage > 1) {
+          searchError = 'Não há mais Pokémon para carregar.'; 
+          // Não substitui por padrão, apenas informa o usuário.
+          // A UI deve tratar a lista vazia corretamente.
+        } else if (fetchedPokemons.isEmpty && totalFetched == 0) {
+            searchError = 'Nenhum Pokémon encontrado com os filtros aplicados.';
+            // Aqui também não substitui, a UI deve mostrar a mensagem.
+        } else if (fetchedPokemons.isEmpty) {
+          searchError = 'Nenhum Pokémon encontrado.';
+          // Caso inicial ou erro inesperado, pode mostrar padrão se desejar
+          // searchResults = _getDefaultPokemons(); 
+        } else {
+          searchError = ''; // Limpa erro se carregar com sucesso
+          print('Carregados ${searchResults.length} Pokémon com sucesso para a página $currentPage');
+        }
+      });
+    } catch (e) {
+      print('Erro ao carregar lista inicial: $e');
+      if (!mounted) return;
+      
+      setState(() {
+        isSearching = false;
+        searchError = 'Erro ao carregar Pokémon. Tente novamente.';
+        
+        // Adiciona alguns Pokémon padrão para evitar tela vazia
+        searchResults = _getDefaultPokemons();
+        totalPages = 1;
+      });
+    } finally {
+      // Garantir que o estado de carregamento seja desativado mesmo em caso de erro
+      if (mounted && isSearching) {
         setState(() {
-          searchResults = result['pokemons'];
-          totalPages = (result['total'] / pageSize).ceil();
           isSearching = false;
         });
       }
-    } catch (e) {
-      print('Erro ao carregar lista inicial: $e');
-      if (mounted) {
-        setState(() => isSearching = false);
-      }
     }
+  }
+  
+  // Método para obter uma lista de Pokémon padrão quando ocorre um erro
+  List<Pokemon> _getDefaultPokemons() {
+    return List.generate(10, (index) {
+      final id = index + 1;
+      return Pokemon(
+        id: id,
+        name: 'Pokémon $id',
+        imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+        types: ['normal'],
+      );
+    });
   }
 
   List<Pokemon> _getPageItems(int page, [List<Pokemon>? sourceList]) {

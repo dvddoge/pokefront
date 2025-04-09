@@ -30,6 +30,7 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
   @override
   void initState() {
     super.initState();
+    print('Inicializando BattleTransition');
     _controller = AnimationController(
       duration: Duration(milliseconds: 3000),
       vsync: this,
@@ -97,13 +98,16 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
     if (_disposed) return;
     
     try {
+      print('Iniciando animação de transição da batalha');
       // Inicia a animação completa sem pausas
       _controller.animateTo(0.3, duration: Duration(milliseconds: 900)).then((_) {
         if (_disposed || !mounted) return;
         
+        print('Primeiro estágio da animação concluído (cortinas fechadas)');
         // Chama o callback do ponto médio
         _midpointReached = true;
         try {
+          print('Chamando callback de ponto médio');
           widget.onMidpoint();
         } catch (e) {
           print('Erro ao chamar onMidpoint: $e');
@@ -113,6 +117,7 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
         Future.delayed(Duration(milliseconds: 1500), () {
           if (_disposed || !mounted) return;
           
+          print('Continuando animação após pausa (cortinas abrindo)');
           // Continua a animação até o final
           try {
             _controller.animateTo(1.0, duration: Duration(milliseconds: 1500));
@@ -127,7 +132,10 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
   }
 
   void _checkMidpoint() {
-    // Mantido para compatibilidade, mas não faz nada
+    // Verifica o progresso da animação para debugging
+    if (_controller.value > 0.0 && _controller.value < 0.1 && !_midpointCallbackCalled) {
+      print('Animação iniciada: ${(_controller.value * 100).toStringAsFixed(1)}%');
+    }
   }
 
   void _checkCompletion(AnimationStatus status) {
@@ -135,6 +143,7 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
     if (_disposed) return;
     
     if (status == AnimationStatus.completed) {
+      print('Animação de transição completada');
       try {
         widget.onTransitionComplete();
       } catch (e) {
@@ -151,6 +160,7 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
 
   @override
   void dispose() {
+    print('Disposing BattleTransition');
     _disposed = true;
     _controller.removeListener(_checkMidpoint);
     _controller.dispose();
@@ -251,59 +261,78 @@ class _BattleTransitionState extends State<BattleTransition> with SingleTickerPr
   }
 
   Widget _buildPokeball() {
-    return Transform.scale(
-      scale: _pokeballScale.value,
-      child: Transform.rotate(
-        angle: _pokeballRotation.value,
+    // Aplica rotação e escala à pokebola
+    return Transform.rotate(
+      angle: _pokeballRotation.value,
+      child: Transform.scale(
+        scale: _controller.value >= 0.3 && _controller.value <= 0.7
+            ? _pokeballScale.value
+            : 1.0,
         child: Container(
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            shape: BoxShape.circle,
             color: Colors.white,
-            border: Border.all(
-              color: Colors.black,
-              width: 3,
-            ),
+            shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.3),
-                blurRadius: 8,
+                spreadRadius: 1,
+                blurRadius: 3,
                 offset: Offset(0, 2),
               ),
             ],
           ),
-          child: Stack(
-            children: [
-              Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                height: 27,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(30),
+          child: Center(
+            child: Stack(
+              children: [
+                // Parte superior da pokebola (vermelha)
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: 30,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Center(
-                child: Container(
-                  width: 15,
-                  height: 15,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white,
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 3,
+                
+                // Linha central da pokebola
+                Positioned(
+                  top: 27.5,
+                  left: 0,
+                  right: 0,
+                  height: 5,
+                  child: Container(
+                    color: Colors.black,
+                  ),
+                ),
+                
+                // Círculo central da pokebola
+                Positioned(
+                  top: 22.5,
+                  left: 22.5,
+                  child: Container(
+                    width: 15,
+                    height: 15,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.black,
+                        width: 2.5,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

@@ -3,11 +3,13 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 import '../models/pokemon.dart';
+import 'pokemon_filter_service.dart'; // Importar o serviço de filtro
 
 class PokemonListService {
   static const int pageSize = 20;
   final Map<int, Map<String, int>> _statsCache = {};
   final Map<int, Pokemon> _pokemonCache = {};
+  final Map<String, List<Pokemon>> _searchCache = {};
 
   Future<Map<String, dynamic>> fetchPokemonList({
     int page = 1,
@@ -15,7 +17,14 @@ class PokemonListService {
     int? selectedGeneration,
     RangeValues? powerRange,
   }) async {
-    List<Pokemon> filteredPokemons = [];
+    // Limpar o cache de Pokémon antes de buscar uma nova página para economizar memória
+    // Considerar uma estratégia de cache mais sofisticada (LRU) se a performance for impactada
+    // if (page > 1) { // Manter a limpeza de cache, se desejado
+    //    _pokemonCache.removeWhere((key, value) => !_isPokemonOnPage(key, page, pageSize));
+    //    print("Cache de Pokémon limpo para otimizar memória.");
+    // }
+
+    List<Pokemon> allFetchedPokemons = [];
     int offset = (page - 1) * pageSize;
     
     // Verificar se há filtros ativos
@@ -24,118 +33,228 @@ class PokemonListService {
                            (powerRange != null && powerRange != const RangeValues(0, 1000));
     
     try {
+      // Sempre busca a lista base de nomes/URLs (até 1000)
       final response = await http.get(
-        Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
-      );
+        Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0'),
+      ).timeout(Duration(seconds: 15));
 
       if (response.statusCode != 200) {
-        throw Exception('Falha ao carregar os Pokémon');
+        print('Erro na resposta da API: ${response.statusCode}');
+        return {'pokemons': _getDefaultPokemons(), 'total': 10};
       }
 
       final data = json.decode(response.body);
       final List results = data['results'];
+      final int totalApiPokemons = results.length;
       
-      if (results.isEmpty) return {'pokemons': [], 'total': 0};
+      if (results.isEmpty) {
+        print('Nenhum resultado encontrado na API');
+        return {'pokemons': _getDefaultPokemons(), 'total': 10};
+      }
 
-      // Fazer todas as requisições de detalhes em paralelo
-      final futures = results.map((pokemon) async {
+      print('Encontrados ${results.length} Pokémon na API');
+
+      List<Map<String, dynamic>> resultsToFetchDetails;
+      if (hasActiveFilters) {
+        // Se houver filtros, precisamos potencialmente buscar detalhes de TODOS para filtrar
+        resultsToFetchDetails = List<Map<String, dynamic>>.from(results);
+        print('Filtros ativos. Preparando para buscar detalhes de até ${resultsToFetchDetails.length} Pokémon.');
+      } else {
+        // Sem filtros, busca detalhes apenas para a página atual
+        final int startIndex = offset;
+        final int endIndex = startIndex + pageSize;
+        resultsToFetchDetails = results.length > startIndex 
+            ? List<Map<String, dynamic>>.from(results.sublist(startIndex, endIndex > results.length ? results.length : endIndex)) 
+            : [];
+        print('Sem filtros. Preparando para buscar detalhes de ${resultsToFetchDetails.length} Pokémon para a página $page.');
+      }
+      
+      if (resultsToFetchDetails.isEmpty && !hasActiveFilters) {
+        print('Nenhum resultado para a página $page (sem filtros)');
+        // Se não há filtros e a página está além do limite, retorna vazio com o total da API
+        return {'pokemons': [], 'total': totalApiPokemons};
+      } else if (resultsToFetchDetails.isEmpty && hasActiveFilters) {
+          print('Nenhum Pokémon encontrado na lista base da API para buscar detalhes com filtros.');
+          return {'pokemons': [], 'total': 0};
+      }
+      
+      // Fazer todas as requisições de detalhes necessárias em paralelo
+      final futures = resultsToFetchDetails.map((pokemon) async {
         try {
           final pokemonUrl = pokemon['url'] as String;
           final pokemonId = int.parse(pokemonUrl.split('/')[6]);
 
+          // Prioriza o cache
           if (_pokemonCache.containsKey(pokemonId)) {
+             // print('Usando Pokémon em cache: ${pokemon['name']} (ID: $pokemonId)');
             return _pokemonCache[pokemonId]!;
           }
 
-          final detailResponse = await http.get(Uri.parse(pokemonUrl));
+          // print('Carregando detalhes do Pokémon: ${pokemon['name']} (ID: $pokemonId)');
+          final detailResponse = await http.get(Uri.parse(pokemonUrl))
+              .timeout(Duration(seconds: 10)); // Timeout menor para detalhes individuais
+              
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
             final pokemonObj = Pokemon.fromDetailJson(detailData);
             _pokemonCache[pokemonId] = pokemonObj;
+            // print('Pokémon carregado com sucesso: ${pokemonObj.name}');
             return pokemonObj;
+          } else {
+            // print('Erro ao carregar detalhes do Pokémon: ${detailResponse.statusCode}');
+            return null; // Retorna null em caso de erro para filtrar depois
           }
         } catch (e) {
-          print('Erro ao carregar Pokémon: $e');
+          // print('Erro ao carregar Pokémon ${pokemon['name']}: $e');
+           return null; // Retorna null em caso de erro
         }
-        return null;
       }).toList();
 
-      final pokemons = (await Future.wait(futures))
-          .where((pokemon) => pokemon != null)
-          .cast<Pokemon>()
-          .toList();
-
-      // Se não houver filtros ativos, retornar todos os Pokémon
-      if (!hasActiveFilters) {
-        final pagePokemons = pokemons.skip(offset).take(pageSize).toList();
-        return {
-          'pokemons': pagePokemons,
-          'total': pokemons.length,
-        };
+      List<Pokemon> fetchedPokemons = [];
+      try {
+        final detailResults = await Future.wait(futures, eagerError: false);
+        fetchedPokemons = detailResults
+            .where((result) => result is Pokemon) // Garante que é um Pokemon e não null
+            .map((result) => result as Pokemon)
+            .toList();
+         print('Detalhes carregados para ${fetchedPokemons.length} Pokémon.');
+      } catch (e) {
+        print('Erro ao processar resultados dos detalhes: $e');
       }
 
-      // Se precisar dos stats, carregar em paralelo
-      if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
-        final statsFutures = pokemons.map((pokemon) => 
-          fetchPokemonStats(pokemon.id)
-        ).toList();
-        
-        await Future.wait(statsFutures);
+      if (fetchedPokemons.isEmpty) {
+        print('Nenhum Pokémon com detalhes carregados com sucesso.');
+        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons };
       }
 
-      // Aplicar filtros apenas se houver filtros ativos
-      filteredPokemons = pokemons.where((pokemon) {
-        if (selectedTypes?.isNotEmpty ?? false) {
-          final selectedTypesList = selectedTypes!.entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
-          
-          if (selectedTypesList.isNotEmpty) {
-            bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
-              pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-            );
-            
-            if (!hasAnySelectedType) return false;
-          }
-        }
+      // Agora, aplica os filtros se necessário
+      List<Pokemon> finalPokemonList;
+      int totalFilteredCount;
 
-        if (selectedGeneration != null && selectedGeneration > 0) {
-          int pokemonGen = _getPokemonGeneration(pokemon.id);
-          if (pokemonGen != selectedGeneration) return false;
-        }
+      if (hasActiveFilters) {
+        print('Aplicando filtros...');
+        // Precisa buscar os stats para filtrar por powerRange (se necessário)
+        await _ensureStatsForFilter(fetchedPokemons, powerRange);
 
-        if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
-          final stats = _statsCache[pokemon.id];
-          if (stats != null) {
-            int totalPower = stats.values.reduce((a, b) => a + b);
-            if (totalPower < powerRange.start || totalPower > powerRange.end) {
-              return false;
-            }
-          }
-        }
+        finalPokemonList = fetchedPokemons.where((pokemon) {
+          // Usa o serviço de filtro
+          return PokemonFilterService.shouldIncludePokemon(
+            pokemon: pokemon,
+            selectedTypes: selectedTypes ?? {},
+            selectedGeneration: selectedGeneration ?? 0,
+            powerRange: powerRange ?? const RangeValues(0, 1000),
+            statsCache: _statsCache, // Passa o cache de stats
+          );
+        }).toList();
+        totalFilteredCount = finalPokemonList.length;
+        print('Após filtros, ${finalPokemonList.length} Pokémon encontrados.');
+      } else {
+        finalPokemonList = fetchedPokemons;
+        totalFilteredCount = totalApiPokemons; // Total sem filtros é o total da API
+      }
 
-        return true;
-      }).toList();
+      // Ordenar a lista (filtrada ou não)
+      finalPokemonList.sort((a, b) => a.id.compareTo(b.id));
 
-      // Ordenar por ID
-      filteredPokemons.sort((a, b) => a.id.compareTo(b.id));
+      // Paginar o resultado FINAL (filtrado ou não)
+      List<Pokemon> pagePokemons;
+      if (hasActiveFilters) {
+        // Se filtros estão ativos, paginamos a lista filtrada completa
+        final int startIndex = offset;
+        final int endIndex = startIndex + pageSize;
+        pagePokemons = finalPokemonList.length > startIndex 
+            ? finalPokemonList.sublist(startIndex, endIndex > finalPokemonList.length ? finalPokemonList.length : endIndex) 
+            : [];
+      } else {
+        // Se não há filtros, a lista final JÁ é a página correta (pois buscamos apenas ela)
+        pagePokemons = finalPokemonList;
+      }
 
-      // Calcular o total de Pokémon filtrados
-      final totalFilteredPokemons = filteredPokemons.length;
-
-      // Pegar apenas os Pokémon da página atual
-      final startIndex = (page - 1) * pageSize;
-      final pagePokemons = filteredPokemons.skip(startIndex).take(pageSize).toList();
+      print('Retornando ${pagePokemons.length} Pokémon para a página $page. Total (filtrado/geral): $totalFilteredCount');
 
       return {
         'pokemons': pagePokemons,
-        'total': totalFilteredPokemons,
+        'total': totalFilteredCount, // Retorna o total CORRETO (filtrado ou geral)
       };
     } catch (e) {
-      print('Erro ao carregar lista de Pokémon: $e');
-      throw Exception('Falha ao carregar os Pokémon');
+      print('Erro geral ao carregar lista de Pokémon: $e');
+      return {'pokemons': _getDefaultPokemons(), 'total': 10};
     }
+  }
+
+  // Função auxiliar para garantir que os stats necessários para o filtro de poder estejam no cache
+  Future<void> _ensureStatsForFilter(List<Pokemon> pokemonsToFilter, RangeValues? powerRange) async {
+    if (powerRange == null || powerRange == const RangeValues(0, 1000)) {
+      return; // Não precisa buscar stats se o filtro de poder não está ativo
+    }
+
+    List<Future<void>> statFutures = [];
+    for (var pokemon in pokemonsToFilter) {
+      if (!_statsCache.containsKey(pokemon.id)) {
+        statFutures.add(fetchPokemonStats(pokemon.id)); // fetchPokemonStats deve adicionar ao _statsCache
+      }
+    }
+
+    if (statFutures.isNotEmpty) {
+      print('Buscando stats para ${statFutures.length} Pokémon para aplicar filtro de poder...');
+      await Future.wait(statFutures).catchError((e) {
+        print("Erro ao buscar alguns stats para filtro: $e. Filtro de poder pode estar incompleto.");
+      });
+      print('Stats para filtro carregados.');
+    }
+  }
+
+  // Adicione ou modifique fetchPokemonStats para usar o cache
+  Future<Map<String, int>?> fetchPokemonStats(int pokemonId) async {
+    if (_statsCache.containsKey(pokemonId)) {
+      return _statsCache[pokemonId];
+    }
+    try {
+      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final stats = <String, int>{};
+        for (var statInfo in data['stats']) {
+          stats[statInfo['stat']['name']] = statInfo['base_stat'] as int;
+        }
+        _statsCache[pokemonId] = stats; // Armazena no cache
+        return stats;
+      } else {
+        print('Erro ao buscar stats para ID $pokemonId: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      print('Erro na requisição de stats para ID $pokemonId: $e');
+      return null;
+    }
+  }
+
+  // Helper para verificar se um ID pertence à página atual (aproximado)
+  // bool _isPokemonOnPage(int pokemonId, int page, int pageSize) {
+// ... (manter a função se a limpeza de cache for usada)
+  // }
+
+  // Método para criar um Pokémon padrão quando ocorre um erro
+  Pokemon _createDefaultPokemon(int id, String name) {
+    return Pokemon(
+      id: id > 0 ? id : 1,
+      name: name.isNotEmpty ? name : 'Pokémon',
+      imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id > 0 ? id : 1}.png',
+      types: ['normal'],
+    );
+  }
+
+  // Método para obter uma lista de Pokémon padrão quando ocorre um erro
+  List<Pokemon> _getDefaultPokemons() {
+    return List.generate(10, (index) {
+      final id = index + 1;
+      return Pokemon(
+        id: id,
+        name: 'Pokémon $id',
+        imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+        types: ['normal'],
+      );
+    });
   }
 
   Future<List<Pokemon>> searchPokemonByName(String query, {
@@ -148,11 +267,18 @@ class PokemonListService {
       return [];
     }
 
+    // Verificar cache para consultas repetidas
+    final cacheKey = '${query}_${selectedTypes}_${selectedGeneration}_${powerRange?.start}_${powerRange?.end}';
+    if (_searchCache.containsKey(cacheKey)) {
+      print('Usando resultados em cache para: $query');
+      return _searchCache[cacheKey]!;
+    }
+
     try {
-      // Primeira requisição para obter a lista básica
+      // Aumentar o limite para 1000 Pokémon
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
-      );
+      ).timeout(Duration(seconds: 15));
       
       if (response.statusCode != 200) {
         throw Exception('Falha ao buscar Pokémon');
@@ -169,135 +295,94 @@ class PokemonListService {
         return true;
       }).toList();
 
+      // Remover a limitação de 20 resultados
+      final limitedResults = filteredResults;
+      
       // Fazer todas as requisições de detalhes em paralelo
-      final futures = filteredResults.map((pokemon) async {
+      final futures = limitedResults.map((pokemon) async {
         try {
           final pokemonUrl = pokemon['url'] as String;
           final pokemonId = int.parse(pokemonUrl.split('/')[6]);
 
-          // Verificar cache primeiro
+          // Verificar cache antes de buscar
           if (_pokemonCache.containsKey(pokemonId)) {
             return _pokemonCache[pokemonId]!;
           }
 
-          final detailResponse = await http.get(Uri.parse(pokemonUrl));
+          final detailResponse = await http.get(Uri.parse(pokemonUrl))
+              .timeout(Duration(seconds: 10));
+              
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
             final pokemonObj = Pokemon.fromDetailJson(detailData);
-            _pokemonCache[pokemonId] = pokemonObj;
+            _pokemonCache[pokemonId] = pokemonObj; // Manter o cache na busca
             return pokemonObj;
+          } else {
+            return _createDefaultPokemon(pokemonId, pokemon['name']);
           }
         } catch (e) {
-          print('Erro ao carregar detalhes do Pokémon: $e');
+          print('Erro ao carregar Pokémon ${pokemon['name']}: $e');
+          try {
+            final pokemonId = int.parse(pokemon['url'].toString().split('/')[6]);
+            return _createDefaultPokemon(pokemonId, pokemon['name']);
+          } catch (parseError) {
+            print('Erro ao processar ID do Pokémon: $parseError');
+            return _createDefaultPokemon(0, pokemon['name'] ?? 'Desconhecido');
+          }
         }
-        return null;
       }).toList();
 
-      // Aguardar todas as requisições terminarem
-      final pokemons = (await Future.wait(futures))
-          .where((pokemon) => pokemon != null)
-          .cast<Pokemon>()
-          .toList();
-
-      // Se precisar dos stats, carregar em paralelo
-      if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
-        final statsFutures = pokemons.map((pokemon) => 
-          fetchPokemonStats(pokemon.id)
-        ).toList();
-        
-        await Future.wait(statsFutures);
+      List<Pokemon> pokemons = [];
+      try {
+        // Correção do TypeError: Verificar tipo antes de converter
+        final results = await Future.wait(futures, eagerError: false);
+        pokemons = results
+            .where((result) => result is Pokemon) // Garante que é um Pokemon
+            .map((result) => result as Pokemon)   // Converte com segurança
+            .toList();
+      } catch (e) {
+        print('Erro ao processar resultados da busca: $e');
+        // Continuar com os Pokémon que foram carregados com sucesso
       }
 
-      // Aplicar filtros restantes
-      final filteredPokemons = pokemons.where((pokemon) {
-        // Filtro de tipos
+      if (pokemons.isEmpty) {
+        return _getDefaultPokemons();
+      }
+
+      // Aplicar filtros adicionais pós-busca (tipo, geração, etc.)
+      final postFilteredPokemons = pokemons.where((pokemon) {
         if (selectedTypes?.isNotEmpty ?? false) {
           final selectedTypesList = selectedTypes!.entries
               .where((entry) => entry.value)
               .map((entry) => entry.key)
               .toList();
           
-          bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
-            pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-          );
-          
-          if (!hasAnySelectedType) return false;
+          if (selectedTypesList.isNotEmpty) {
+            return selectedTypesList.any((selectedType) =>
+              pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
+            );
+          }
         }
 
-        // Filtro de geração
         if (selectedGeneration != null && selectedGeneration > 0) {
           int pokemonGen = _getPokemonGeneration(pokemon.id);
-          if (pokemonGen != selectedGeneration) return false;
-        }
-
-        // Filtro de poder
-        if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
-          final stats = _statsCache[pokemon.id];
-          if (stats != null) {
-            int totalPower = stats.values.reduce((a, b) => a + b);
-            if (totalPower < powerRange.start || totalPower > powerRange.end) {
-              return false;
-            }
-          }
+          return pokemonGen == selectedGeneration;
         }
 
         return true;
       }).toList();
 
       // Ordenar por ID
-      filteredPokemons.sort((a, b) => a.id.compareTo(b.id));
-      return filteredPokemons;
+      postFilteredPokemons.sort((a, b) => a.id.compareTo(b.id));
+      
+      // Armazenar em cache
+      _searchCache[cacheKey] = postFilteredPokemons;
+      
+      return postFilteredPokemons;
     } catch (e) {
-      print('Erro ao buscar Pokémon: $e');
-      return [];
+      print('Erro na busca de Pokémon: $e');
+      return _getDefaultPokemons();
     }
-  }
-
-  Future<Map<String, int>?> fetchPokemonStats(int pokemonId) async {
-    if (_statsCache.containsKey(pokemonId)) {
-      return _statsCache[pokemonId];
-    }
-
-    int retryCount = 0;
-    const maxRetries = 3;
-    const initialDelay = Duration(milliseconds: 500);
-
-    while (retryCount < maxRetries) {
-      try {
-        final response = await http.get(
-          Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'),
-        );
-        
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          final stats = Map<String, int>.fromEntries(
-            (data['stats'] as List).map(
-              (s) => MapEntry(
-                (s['stat']['name'] as String),
-                (s['base_stat'] as int),
-              ),
-            ),
-          );
-          
-          _statsCache[pokemonId] = stats;
-          return stats;
-        } else if (response.statusCode == 429) { // Rate limit
-          await Future.delayed(Duration(milliseconds: 1000 * (retryCount + 1)));
-          retryCount++;
-          continue;
-        }
-        return null;
-      } catch (e) {
-        if (retryCount < maxRetries - 1) {
-          await Future.delayed(initialDelay * (retryCount + 1));
-          retryCount++;
-          continue;
-        }
-        print('Erro ao buscar stats após $maxRetries tentativas: $e');
-        return null;
-      }
-    }
-    return null;
   }
 
   Future<List<Pokemon>> filterPokemons({

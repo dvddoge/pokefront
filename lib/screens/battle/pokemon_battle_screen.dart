@@ -74,6 +74,16 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       pokemon1Moves = PokemonMoveService.getDefaultMoves();
       pokemon2Moves = PokemonMoveService.getDefaultMoves();
       
+      // Certifica-se de que a transição seja exibida ao iniciar a tela
+      setState(() {
+        _showTransition = true;
+        _battleScreenReady = false;
+      });
+      
+      print('Estado inicial da tela de batalha:');
+      print('- _showTransition: $_showTransition');
+      print('- _battleScreenReady: $_battleScreenReady');
+      
       // Carrega os dados imediatamente para garantir que estejam disponíveis
       // quando a animação de transição terminar
       _loadPokemonData();
@@ -445,6 +455,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     
     try {
       print('Ponto médio da transição atingido');
+      print('Estado atual - isLoading: $isLoading, _battleScreenReady: $_battleScreenReady');
+      
       // Quando chegamos ao meio da animação (cortinas fechadas),
       // verificamos se os dados já foram carregados
       if (isLoading) {
@@ -475,6 +487,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     
     try {
       print('Animação de transição completa');
+      print('Estado atual - _showTransition: $_showTransition, _battleScreenReady: $_battleScreenReady');
+      
       // Quando a animação termina, mostramos a tela de batalha e iniciamos a música
       setState(() {
         _showTransition = false;
@@ -482,6 +496,9 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
           battleLog = 'Carregando dados do Pokémon...';
         }
       });
+      
+      print('Transição concluída, mostrando tela de batalha (_showTransition: $_showTransition)');
+      
       // Não iniciamos a música no ambiente web para evitar erros
       // _startBattleMusic();
     } catch (e) {
@@ -512,31 +529,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
             // Conteúdo da batalha (oculto enquanto a transição está ativa)
             if (!_showTransition) Stack(
               children: [
-                // Fundo animado com vermelho mais intenso
-                AnimatedBuilder(
-                  animation: _backgroundAnimation,
-                  builder: (context, child) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.red[900]!.withOpacity(0.95),
-                            Colors.red[800]!.withOpacity(0.9),
-                            Colors.red[700]!.withOpacity(0.85),
-                          ],
-                        ),
-                      ),
-                      child: CustomPaint(
-                        painter: BattleBackgroundPainter(
-                          animation: _backgroundAnimation.value,
-                        ),
-                        size: Size.infinite,
-                      ),
-                    );
-                  },
-                ),
+                // Fundo animado
+                BattleBackground(animation: _backgroundAnimation),
 
                 Column(
                   children: [
@@ -705,48 +699,5 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
         ),
       ),
     );
-  }
-}
-
-class BattleBackgroundPainter extends CustomPainter {
-  final double animation;
-
-  BattleBackgroundPainter({required this.animation});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.0;
-
-    // Desenha círculos concêntricos com branco forte
-    for (int i = 0; i < 5; i++) {
-      paint.color = Colors.white.withOpacity(0.5 - (i * 0.05));
-      final radius = 120.0 + (i * 60.0) + (math.sin(animation * 2 * math.pi) * 10);
-      canvas.drawCircle(
-        Offset(size.width * 0.5, size.height * 0.5),
-        radius,
-        paint,
-      );
-    }
-
-    // Desenha linhas diagonais
-    paint.color = Colors.white.withOpacity(0.15);
-    paint.strokeWidth = 1.5;
-    for (int i = 0; i < 12; i++) {
-      final spacing = 120.0;
-      final startX = -size.width + (i * spacing) + (animation * spacing);
-      canvas.drawLine(
-        Offset(startX, 0),
-        Offset(startX + size.height, size.height),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(BattleBackgroundPainter oldDelegate) {
-    return oldDelegate.animation != animation;
   }
 }

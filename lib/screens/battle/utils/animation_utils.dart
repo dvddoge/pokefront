@@ -32,14 +32,14 @@ class AnimationUtils {
   static AnimationController createBackgroundController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 8000),
+      duration: Duration(milliseconds: 12000),
     )..repeat();
   }
 
   static AnimationController createFloatingController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 3000),
+      duration: Duration(milliseconds: 6000),
     )..repeat();
   }
 

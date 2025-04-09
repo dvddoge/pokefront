@@ -42,13 +42,15 @@ class PokemonFilterService {
   }
 
   static int _getPokemonGeneration(int pokemonId) {
-    if (pokemonId <= 151) return 1;
-    if (pokemonId <= 251) return 2;
-    if (pokemonId <= 386) return 3;
-    if (pokemonId <= 493) return 4;
-    if (pokemonId <= 649) return 5;
-    if (pokemonId <= 721) return 6;
-    if (pokemonId <= 809) return 7;
-    return 8;
+    if (pokemonId <= 151) return 1; // Gen 1
+    if (pokemonId <= 251) return 2; // Gen 2
+    if (pokemonId <= 386) return 3; // Gen 3
+    if (pokemonId <= 493) return 4; // Gen 4
+    if (pokemonId <= 649) return 5; // Gen 5
+    if (pokemonId <= 721) return 6; // Gen 6
+    if (pokemonId <= 809) return 7; // Gen 7
+    if (pokemonId <= 898) return 8; // Gen 8
+    // Assumindo que IDs > 898 são Gen 9 (ou posteriores, mas a API buscada vai até ~1000)
+    return 9; 
   }
 } 
