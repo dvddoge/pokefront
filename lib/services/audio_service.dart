@@ -6,7 +6,7 @@ class AudioService {
   final AudioPlayer _effectPlayer = AudioPlayer();
   bool _isMusicEnabled = true;
   bool _isSoundEnabled = true;
-  double _musicVolume = 0.5;
+  double _musicVolume = 0.2;
   double _soundVolume = 0.7;
   bool _isMusicPlaying = false;
   String? _currentMusic;

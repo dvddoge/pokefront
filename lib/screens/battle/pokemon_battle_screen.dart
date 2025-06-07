@@ -108,12 +108,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
 
   Future<void> _startBattleMusic() async {
     try {
-      // No ambiente web, os arquivos .ogg podem não ser suportados
-      // Vamos apenas registrar que tentamos tocar a música, sem gerar erros
-      print('Tentando iniciar música de batalha (desativado para web)');
-      
-      // Em um ambiente real, você precisaria converter os arquivos para MP3 ou outro formato compatível
-      // await _audioService.playMusic('assets/sounds/music/wild-battle.mp3');
+      await _audioService.playMusic('sounds/music/assets_audio_music_wild-battle.ogg');
     } catch (e) {
       print('Erro ao tocar música de batalha: $e');
     }
@@ -191,9 +186,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     }
   }
 
-  void _playerTurn(PokemonMove move) {
-    if (isAnimating) return;
-
+  void _executeMove(PokemonMove move) {
     final attacker = isPlayer1Turn ? player1 : player2;
     final defender = isPlayer1Turn ? player2 : player1;
     
@@ -236,19 +229,40 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       } else {
         setState(() {
           battleLog = 'O ataque de ${attacker.name} errou!';
-          isAnimating = false;
-          isPlayer1Turn = !isPlayer1Turn;
         });
-        
-        if (!isPlayer1Turn) {
-          Future.delayed(Duration(milliseconds: 1500), _aiTurn);
-        }
       }
-      
+
       if (player1.hp <= 0 || player2.hp <= 0) {
         _handleBattleEnd();
+        return;
+      }
+
+      setState(() {
+        isPlayer1Turn = !isPlayer1Turn;
+      });
+
+      if (!isPlayer1Turn) {
+        Future.delayed(const Duration(milliseconds: 1500), _aiMakesMove);
+      } else {
+        setState(() {
+          isAnimating = false;
+        });
       }
     });
+  }
+
+  void _playerMakesMove(PokemonMove move) {
+    if (isAnimating) return;
+    _executeMove(move);
+  }
+
+  void _aiMakesMove() {
+    final move = BattleService.selectAIMove(
+      pokemon2Moves,
+      player2,
+      player1,
+    );
+    _executeMove(move);
   }
 
   void _handleBattleEnd() {
@@ -261,17 +275,6 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
         _showBattleEndDialog();
       }
     });
-  }
-
-  void _aiTurn() {
-    if (isAnimating || pokemon2Moves.isEmpty) return;
-
-    final move = BattleService.selectAIMove(
-      pokemon2Moves,
-      player2,
-      player1,
-    );
-    _playerTurn(move);
   }
 
   void _showBattleEndDialog() {
@@ -357,7 +360,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
        _isOpeningTransitionPlaying = false; // Esconde a transição
      });
      // Pode iniciar a música de batalha aqui
-     // _startBattleMusic();
+     _startBattleMusic();
   }
 
   @override
@@ -525,7 +528,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                   children: pokemon1Moves.map((move) => MoveButton(
                                     move: move,
                                     isDisabled: isAnimating,
-                                    onMoveSelected: _playerTurn,
+                                    onMoveSelected: _playerMakesMove,
                                   )).toList(),
                                 ),
                               ),
