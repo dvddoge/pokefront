@@ -31,9 +31,14 @@ class PokemonFilterService {
       if (pokemonGen != selectedGeneration) return false;
     }
 
-    if (statsCache.containsKey(pokemon.id)) {
-      int totalPower = statsCache[pokemon.id]!.values.reduce((a, b) => a + b);
-      if (totalPower < powerRange.start || totalPower > powerRange.end) {
+    if (powerRange != const RangeValues(0, 1000)) {
+      if (statsCache.containsKey(pokemon.id)) {
+        int totalPower = statsCache[pokemon.id]!.values.reduce((a, b) => a + b);
+        if (totalPower < powerRange.start || totalPower > powerRange.end) {
+          return false;
+        }
+      } else {
+        print("Excluindo ${pokemon.name} (ID: ${pokemon.id}) do filtro de poder por falta de stats no cache.");
         return false;
       }
     }

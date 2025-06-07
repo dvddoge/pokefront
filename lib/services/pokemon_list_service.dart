@@ -204,27 +204,37 @@ class PokemonListService {
     }
   }
 
-  // Adicione ou modifique fetchPokemonStats para usar o cache
+  // Adicione ou modifique fetchPokemonStats para usar o cache e tratar erros
   Future<Map<String, int>?> fetchPokemonStats(int pokemonId) async {
     if (_statsCache.containsKey(pokemonId)) {
+      // Retorna o valor do cache se já existir (pode ser null se falhou antes)
       return _statsCache[pokemonId];
     }
     try {
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'));
+      print('Buscando stats para ID $pokemonId...');
+      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId')).timeout(Duration(seconds: 7)); // Timeout um pouco menor
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final stats = <String, int>{};
+        int totalPower = 0;
         for (var statInfo in data['stats']) {
-          stats[statInfo['stat']['name']] = statInfo['base_stat'] as int;
+          final value = statInfo['base_stat'] as int;
+          stats[statInfo['stat']['name']] = value;
+          totalPower += value; // Calcular poder total aqui
         }
-        _statsCache[pokemonId] = stats; // Armazena no cache
+        // Adiciona o poder total ao cache para referência rápida, se necessário
+        stats['total_power'] = totalPower;
+        print('Stats para ID $pokemonId carregados. Poder total: $totalPower');
+        _statsCache[pokemonId] = stats; // Armazena stats válidos no cache
         return stats;
       } else {
         print('Erro ao buscar stats para ID $pokemonId: ${response.statusCode}');
+        _statsCache[pokemonId] = {}; // Armazena um mapa vazio para indicar falha
         return null;
       }
     } catch (e) {
       print('Erro na requisição de stats para ID $pokemonId: $e');
+      _statsCache[pokemonId] = {}; // Armazena um mapa vazio para indicar falha
       return null;
     }
   }
@@ -346,30 +356,23 @@ class PokemonListService {
       }
 
       if (pokemons.isEmpty) {
-        return _getDefaultPokemons();
+        // Retornar lista vazia em vez de padrão pode ser melhor para busca
+        return []; // Alterado de _getDefaultPokemons()
       }
 
-      // Aplicar filtros adicionais pós-busca (tipo, geração, etc.)
+      // Aplicar filtros adicionais pós-busca (tipo, geração, PODER)
+      // Garantir que os stats necessários para o filtro de poder estejam carregados
+      await _ensureStatsForFilter(pokemons, powerRange);
+
       final postFilteredPokemons = pokemons.where((pokemon) {
-        if (selectedTypes?.isNotEmpty ?? false) {
-          final selectedTypesList = selectedTypes!.entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
-          
-          if (selectedTypesList.isNotEmpty) {
-            return selectedTypesList.any((selectedType) =>
-              pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-            );
-          }
-        }
-
-        if (selectedGeneration != null && selectedGeneration > 0) {
-          int pokemonGen = _getPokemonGeneration(pokemon.id);
-          return pokemonGen == selectedGeneration;
-        }
-
-        return true;
+         // REUTILIZAR A LÓGICA CENTRALIZADA DE FILTRO
+         return PokemonFilterService.shouldIncludePokemon(
+           pokemon: pokemon,
+           selectedTypes: selectedTypes ?? {},
+           selectedGeneration: selectedGeneration ?? 0,
+           powerRange: powerRange ?? const RangeValues(0, 1000),
+           statsCache: _statsCache,
+         );
       }).toList();
 
       // Ordenar por ID
@@ -378,10 +381,12 @@ class PokemonListService {
       // Armazenar em cache
       _searchCache[cacheKey] = postFilteredPokemons;
       
+      print('Busca por "$query" com filtros retornou ${postFilteredPokemons.length} Pokémon.');
       return postFilteredPokemons;
     } catch (e) {
       print('Erro na busca de Pokémon: $e');
-      return _getDefaultPokemons();
+      // Retornar lista vazia em caso de erro na busca
+      return []; // Alterado de _getDefaultPokemons()
     }
   }
 

@@ -47,14 +47,16 @@ class PokemonMoveService {
               final power = moveData['power'] ?? 50;
               final accuracy = moveData['accuracy'] ?? 90;
               final type = moveData['type']?['name'] ?? 'normal';
+              final damageClass = moveData['damage_class']?['name'] ?? 'physical';
               
-              print('Movimento carregado: ${moveData['name']} (Poder: $power, Precisão: $accuracy, Tipo: $type)');
+              print('Movimento carregado: ${moveData['name']} (Poder: $power, Precisão: $accuracy, Tipo: $type, Classe: $damageClass)');
               
               return PokemonMove(
                 name: moveData['name'].toString().replaceAll('-', ' '),
                 damage: power.toDouble(),
                 type: type,
                 accuracy: accuracy.toDouble(),
+                damageClass: damageClass,
               );
             } else {
               print('Erro ao carregar detalhes do movimento. Status: ${moveResponse.statusCode}');
@@ -128,6 +130,7 @@ class PokemonMoveService {
       damage: damage,
       type: type,
       accuracy: 90,
+      damageClass: 'physical', // Assume physical for generated moves
     );
   }
 
@@ -136,27 +139,31 @@ class PokemonMoveService {
     return [
       PokemonMove(
         name: 'Ataque Rápido',
-        damage: 20,
+        damage: 40,
         type: 'normal',
-        accuracy: 95,
+        accuracy: 100,
+        damageClass: 'physical',
       ),
       PokemonMove(
         name: 'Investida',
-        damage: 25,
+        damage: 50,
         type: 'normal',
-        accuracy: 90,
+        accuracy: 100,
+        damageClass: 'physical',
       ),
       PokemonMove(
-        name: 'Ataque Especial',
-        damage: 35,
-        type: 'special',
-        accuracy: 80,
+        name: 'Raio de Água',
+        damage: 60,
+        type: 'water',
+        accuracy: 100,
+        damageClass: 'special',
       ),
       PokemonMove(
-        name: 'Golpe Final',
-        damage: 45,
-        type: 'special',
-        accuracy: 70,
+        name: 'Folha Navalha',
+        damage: 55,
+        type: 'grass',
+        accuracy: 95,
+        damageClass: 'physical',
       ),
     ];
   }

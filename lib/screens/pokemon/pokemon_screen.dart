@@ -36,8 +36,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   final _scrollController = ScrollController();
   Timer? _debounce;
   List<Pokemon> searchResults = [];
-  List<Pokemon> allSearchResults = []; // Lista completa de resultados
-  List<Pokemon> originalSearchResults = []; // Lista original dos resultados de busca
+  List<Pokemon> allSearchResults = []; // Lista completa filtrada (localmente ou do serviço)
+  List<Pokemon> originalSearchResults = []; // Lista original BRUTA da busca por texto
   int totalPages = 1;
   String currentSearchQuery = '';
   bool isSearchMode = false;
@@ -152,9 +152,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     });
     
     try {
-      print('Iniciando carregamento da lista de Pokémon');
-      
-      // Adicionar um timeout para evitar espera infinita
+      print('LoadInitialPokemonList: Buscando página $currentPage com filtros...');
       final result = await _pokemonListService.fetchPokemonList(
         page: currentPage,
         selectedTypes: selectedTypes,
@@ -232,39 +230,101 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   List<Pokemon> _getPageItems(int page, [List<Pokemon>? sourceList]) {
-    final list = sourceList ?? (isSearchMode ? originalSearchResults : searchResults);
+    // Prioriza sourceList se fornecido, caso contrário usa a lógica padrão baseada em isSearchMode
+    final list = sourceList ?? (isSearchMode ? allSearchResults : searchResults);
     final startIndex = (page - 1) * pageSize;
     final endIndex = math.min(startIndex + pageSize, list.length);
-    if (startIndex >= list.length) return [];
+    if (startIndex >= list.length || startIndex < 0) return []; // Adicionado cheque startIndex < 0 por segurança
     return list.sublist(startIndex, endIndex);
   }
 
-  void _handleSearchResults(List<Pokemon> results) {
+  void _handleSearchResults(List<Pokemon> rawResults) {
     if (!mounted) return;
+    final currentQuery = _searchController.text;
+    final stillInSearchMode = currentQuery.isNotEmpty;
+    print("HandleSearchResults: Recebido ${rawResults.length} resultados brutos para '$currentQuery'");
+
     setState(() {
-      currentSearchQuery = _searchController.text;
-      isSearchMode = currentSearchQuery.isNotEmpty;
-    });
-    if (isSearchMode) {
-      setState(() {
-        originalSearchResults = results; // armazena os resultados originais da busca
-        allSearchResults = results;
+        isSearchMode = stillInSearchMode;
+        currentSearchQuery = currentQuery;
+        originalSearchResults = rawResults;
         currentPage = 1;
-        if (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)) {
-          _applyFilters();
-        } else {
-          searchResults = _getPageItems(currentPage, results);
-          totalPages = results.isEmpty ? 0 : (results.length / pageSize).ceil();
-          isSearching = false;
-        }
-      });
-    } else {
-      setState(() {
-        searchResults = [];
         isSearching = false;
-      });
-      _loadInitialPokemonList();
-    }
+
+        if (stillInSearchMode) {
+          _reapplyLocalFiltersAndUpdateStateVariables();
+        } else {
+          print("HandleSearchResults: Busca limpa, chamando _loadInitialPokemonList");
+          searchResults = [];
+          allSearchResults = [];
+          totalPages = 0;
+          searchError = '';
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+             if (mounted) {
+               _loadInitialPokemonList();
+             }
+          });
+        }
+    });
+  }
+
+  Map<String, dynamic> _calculateFilteredState() {
+      if (!isSearchMode) {
+          print("_calculateFilteredState: Chamada inválida (isSearchMode = false)");
+          // Retorna listas vazias do tipo correto para evitar type errors posteriores
+          return {'searchResults': <Pokemon>[], 'allSearchResults': <Pokemon>[], 'totalPages': 0, 'searchError': ''};
+      }
+
+      print("CalculateFilteredState START: originalSearchResults.length = ${originalSearchResults.length}");
+      bool filtersAreActive = selectedTypes.values.any((v) => v) || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000);
+      print("CalculateFilteredState: Filters Active = $filtersAreActive");
+
+      List<Pokemon> filteredList;
+      if (filtersAreActive) {
+          try {
+            // Certifique-se que _shouldIncludePokemon lida bem com estados intermediários se necessário
+            filteredList = originalSearchResults.where(_shouldIncludePokemon).toList();
+          } catch (e) {
+            print("CalculateFilteredState: ERRO durante .where: $e");
+            filteredList = <Pokemon>[]; // Use tipo explícito
+          }
+      } else {
+          // Cria uma nova lista para evitar modificar a original indiretamente
+          filteredList = List<Pokemon>.from(originalSearchResults);
+      }
+       print("CalculateFilteredState END: filteredList.length = ${filteredList.length}");
+
+      // Calcula os novos valores
+      List<Pokemon> newAllSearchResults = filteredList;
+      // Usa currentPage que já foi resetado para 1
+      // Passa newAllSearchResults explicitamente como sourceList para _getPageItems
+      List<Pokemon> newSearchResults = _getPageItems(1, newAllSearchResults);
+      int newTotalPages = newAllSearchResults.isEmpty ? 0 : (newAllSearchResults.length / pageSize).ceil();
+      // Garante que totalPages seja pelo menos 1 se houver resultados, mesmo que menos que pageSize
+      if (newTotalPages == 0 && newAllSearchResults.isNotEmpty) {
+          newTotalPages = 1;
+      }
+      
+      String newSearchError = newAllSearchResults.isEmpty
+          ? (filtersAreActive ? 'Nenhum Pokémon encontrado com esta busca e filtros.' : 'Nenhum Pokémon encontrado para "$currentSearchQuery".')
+          : '';
+
+      print("CalculateFilteredState RESULT: newSearchResults.length=${newSearchResults.length}, newAllSearchResults.length=${newAllSearchResults.length}, newTotalPages=$newTotalPages, newSearchError='$newSearchError'");
+
+      return {
+         'searchResults': newSearchResults, // Esta é a lista para a página atual
+         'allSearchResults': newAllSearchResults, // Esta é a lista completa filtrada
+         'totalPages': newTotalPages,
+         'searchError': newSearchError,
+      };
+  }
+
+  void _reapplyLocalFiltersAndUpdateStateVariables() {
+      final newState = _calculateFilteredState();
+      searchResults = newState['searchResults'] as List<Pokemon>;
+      allSearchResults = newState['allSearchResults'] as List<Pokemon>;
+      totalPages = newState['totalPages'] as int;
+      searchError = newState['searchError'] as String;
   }
 
   void _handleSearchError(String error) {
@@ -287,10 +347,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       selectedTypes = newTypes;
       currentPage = 1;
-      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
-        _loadInitialPokemonList();
+      if (isSearchMode) {
+         _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-        _applyFilters();
+         _loadInitialPokemonList();
       }
     });
   }
@@ -299,10 +359,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       selectedGeneration = generation;
       currentPage = 1;
-      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
-        _loadInitialPokemonList();
+      if (isSearchMode) {
+         _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-        _applyFilters();
+         _loadInitialPokemonList();
       }
     });
   }
@@ -311,71 +371,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     setState(() {
       powerRange = range;
       currentPage = 1;
-      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
-        _loadInitialPokemonList();
+      if (isSearchMode) {
+         _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-        _applyFilters();
+         _loadInitialPokemonList();
       }
     });
-  }
-
-  void _applyFilters() async {
-    setState(() => isSearching = true);
-
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-
-    try {
-      // Se não houver filtros ativos e não estiver em modo de busca, carrega a lista inicial
-      if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000) && !isSearchMode) {
-        setState(() {
-          searchResults = [];
-          isSearching = false;
-        });
-        await _loadInitialPokemonList();
-        return;
-      }
-
-      if (isSearchMode) {
-        final filteredResults = originalSearchResults.where(_shouldIncludePokemon).toList();
-        setState(() {
-          searchResults = _getPageItems(currentPage, filteredResults);
-          totalPages = filteredResults.isEmpty ? 0 : (filteredResults.length / pageSize).ceil();
-          isSearching = false;
-        });
-      } else {
-        final result = await _pokemonListService.fetchPokemonList(
-          page: currentPage,
-          selectedTypes: selectedTypes,
-          selectedGeneration: selectedGeneration,
-          powerRange: powerRange,
-        );
-
-        if (mounted) {
-          setState(() {
-            searchResults = result['pokemons'];
-            totalPages = (result['total'] / pageSize).ceil();
-            isSearching = false;
-          });
-        }
-      }
-    } catch (e) {
-      print('Erro ao aplicar filtros: $e');
-      if (mounted) {
-        setState(() => isSearching = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao aplicar filtros. Tente novamente.'),
-            backgroundColor: Colors.red[700],
-          ),
-        );
-      }
-    }
   }
 
   bool _shouldIncludePokemon(Pokemon pokemon) {
@@ -474,7 +475,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         _pokemon1ForBattle = pokemon;
         _isLoadingStats = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${pokemon.name} selecionado! Escolha o oponente.'), backgroundColor: Colors.blue[700]));
 
     } else if (_pokemon1ForBattle!.id == pokemon.id) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pokémon já selecionado. Escolha o oponente!'), backgroundColor: Colors.orange[700]));
@@ -483,8 +483,6 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       setState(() => _isLoadingStats = true);
       _pokemon2ForBattle = pokemon;
       _selectedPokemonNotifier.value = null;
-
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Iniciando batalha: ${_pokemon1ForBattle!.name} vs ${_pokemon2ForBattle!.name}'), backgroundColor: Colors.green[700]));
 
       _imagePreloadService.preloadBattle(_pokemon1ForBattle!, _pokemon2ForBattle!).then((_) {
         if (mounted) {
@@ -633,57 +631,25 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     });
   }
 
-  void _changePage(int newPage) async {
+  void _changePage(int newPage) {
     if (newPage < 1 || newPage > totalPages) return;
     
     setState(() {
       currentPage = newPage;
-      isSearching = true;
+      // Se estiver em modo de busca, a paginação é local nos allSearchResults
+      if (isSearchMode) {
+         searchResults = _getPageItems(newPage, allSearchResults);
+         isSearching = false; // Paginação local é rápida
+      } else {
+         // Senão, busca a nova página do serviço
+         isSearching = true;
+         _loadInitialPokemonList();
+      }
     });
 
+    // Scroll para o topo
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        0,
-        duration: Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
-    
-    if (isSearchMode) {
-      setState(() {
-        searchResults = _getPageItems(newPage);
-        isSearching = false;
-      });
-    } else {
-      try {
-        final result = await _pokemonListService.fetchPokemonList(
-          page: newPage,
-          selectedTypes: selectedTypes,
-          selectedGeneration: selectedGeneration,
-          powerRange: powerRange,
-        );
-        if (mounted) {
-          setState(() {
-            searchResults = result['pokemons'];
-            totalPages = (result['total'] / pageSize).ceil();
-            isSearching = false;
-          });
-        }
-      } catch (e) {
-        print('Erro ao carregar página $newPage: $e');
-        if (mounted) {
-          setState(() {
-            isSearching = false;
-            currentPage = currentPage > 1 ? currentPage - 1 : 1;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erro ao carregar página $newPage. Tente novamente.'),
-              backgroundColor: Colors.red[700],
-            ),
-          );
-        }
-      }
+      _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
 
@@ -1307,4 +1273,36 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
        });
     }
   }
+
+  void _searchPokemonTrigger(String query) async {
+     if (query.isEmpty) {
+       setState(() {
+         currentSearchQuery = '';
+         isSearchMode = false;
+         searchResults = [];
+         originalSearchResults = [];
+         allSearchResults = [];
+         currentPage = 1;
+         totalPages = 1;
+         searchError = '';
+       });
+       _loadInitialPokemonList();
+       return;
+     }
+
+     setState(() {
+       isSearching = true;
+       searchError = '';
+       currentSearchQuery = query;
+       isSearchMode = true;
+     });
+     try {
+       print("SearchPokemonTrigger: Buscando resultados brutos para '$query'");
+       final results = await _pokemonListService.searchPokemonByName(query);
+       _handleSearchResults(results);
+     } catch (e) {
+       _handleSearchError('Erro ao buscar Pokémon: $e');
+       if(mounted) setState(() => isSearching = false);
+     }
+   }
 } 

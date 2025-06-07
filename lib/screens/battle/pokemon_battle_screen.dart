@@ -45,10 +45,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
   late Animation<double> _backgroundAnimation;
   late Animation<double> _floatingAnimation;
   
-  late double pokemon1MaxHP;
-  late double pokemon2MaxHP;
-  late double pokemon1HP;
-  late double pokemon2HP;
+  late Pokemon player1;
+  late Pokemon player2;
   String battleLog = '';
   bool isPlayer1Turn = true;
   bool isAnimating = false;
@@ -68,11 +66,9 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       _isOpeningTransitionPlaying = widget.playOpeningAnimation;
       _setupAnimations();
       
-      // Inicializa valores padrão para evitar erros
-      pokemon1MaxHP = 100;
-      pokemon2MaxHP = 100;
-      pokemon1HP = 100;
-      pokemon2HP = 100;
+      // Inicializa com os pokémons passados como widget, serão substituídos pelos dados completos
+      player1 = widget.pokemon1;
+      player2 = widget.pokemon2;
       
       // Inicializa com movimentos padrão para garantir que sempre haja algo para mostrar
       pokemon1Moves = PokemonMoveService.getDefaultMoves();
@@ -136,246 +132,146 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
     super.dispose();
   }
 
+  Future<Pokemon> _fetchPokemonDetails(int pokemonId) async {
+    final response = await http.get(
+      Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'),
+    );
+    if (response.statusCode == 200) {
+      return Pokemon.fromDetailJson(json.decode(response.body));
+    } else {
+      throw Exception('Falha ao carregar detalhes do Pokémon $pokemonId');
+    }
+  }
+
   Future<void> _loadPokemonData() async {
     if (!mounted) return;
     
     print('Carregando dados dos Pokémon');
     
     try {
-      // Carrega os movimentos dos Pokémon
-      List<PokemonMove> moves1 = [];
-      List<PokemonMove> moves2 = [];
-      double hp1 = 100;
-      double hp2 = 100;
-      
-      try {
-        print('Tentando carregar movimentos para o Pokémon 1 (ID: ${widget.pokemon1.id})');
-        moves1 = await PokemonMoveService.fetchPokemonMoves(widget.pokemon1.id);
-        print('Movimentos do Pokémon 1 carregados: ${moves1.length}');
-        for (var move in moves1) {
-          print('Movimento: ${move.name}, Dano: ${move.damage}, Tipo: ${move.type}, Precisão: ${move.accuracy}');
-        }
-      } catch (e) {
-        print('Erro ao carregar movimentos do Pokémon 1: $e');
-        print('Usando movimentos padrão para o Pokémon 1');
-        moves1 = PokemonMoveService.getDefaultMoves();
-      }
-      
-      try {
-        print('Tentando carregar movimentos para o Pokémon 2 (ID: ${widget.pokemon2.id})');
-        moves2 = await PokemonMoveService.fetchPokemonMoves(widget.pokemon2.id);
-        print('Movimentos do Pokémon 2 carregados: ${moves2.length}');
-        for (var move in moves2) {
-          print('Movimento: ${move.name}, Dano: ${move.damage}, Tipo: ${move.type}, Precisão: ${move.accuracy}');
-        }
-      } catch (e) {
-        print('Erro ao carregar movimentos do Pokémon 2: $e');
-        print('Usando movimentos padrão para o Pokémon 2');
-        moves2 = PokemonMoveService.getDefaultMoves();
-      }
-      
-      // Carrega os dados dos Pokémon
-      try {
-        print('Tentando carregar dados do Pokémon 1 (ID: ${widget.pokemon1.id})');
-        final response1 = await http.get(
-          Uri.parse('https://pokeapi.co/api/v2/pokemon/${widget.pokemon1.id}'),
-        );
-        
-        if (response1.statusCode == 200) {
-          final data1 = json.decode(response1.body);
-          final stats1 = data1['stats'] as List;
-          final hpStat = stats1.firstWhere(
-            (stat) => stat['stat']['name'] == 'hp',
-            orElse: () => {'base_stat': 100},
-          );
-          hp1 = (hpStat['base_stat'] as int).toDouble();
-          print('HP do Pokémon 1 carregado: $hp1');
-        } else {
-          print('Erro na resposta da API para Pokémon 1: ${response1.statusCode}');
-        }
-      } catch (e) {
-        print('Erro ao carregar dados do Pokémon 1: $e');
-      }
-      
-      try {
-        print('Tentando carregar dados do Pokémon 2 (ID: ${widget.pokemon2.id})');
-        final response2 = await http.get(
-          Uri.parse('https://pokeapi.co/api/v2/pokemon/${widget.pokemon2.id}'),
-        );
-        
-        if (response2.statusCode == 200) {
-          final data2 = json.decode(response2.body);
-          final stats2 = data2['stats'] as List;
-          final hpStat = stats2.firstWhere(
-            (stat) => stat['stat']['name'] == 'hp',
-            orElse: () => {'base_stat': 100},
-          );
-          hp2 = (hpStat['base_stat'] as int).toDouble();
-          print('HP do Pokémon 2 carregado: $hp2');
-        } else {
-          print('Erro na resposta da API para Pokémon 2: ${response2.statusCode}');
-        }
-      } catch (e) {
-        print('Erro ao carregar dados do Pokémon 2: $e');
-      }
+      // Carrega os dados detalhados e os movimentos em paralelo
+      final results = await Future.wait([
+        _fetchPokemonDetails(widget.pokemon1.id),
+        _fetchPokemonDetails(widget.pokemon2.id),
+        PokemonMoveService.fetchPokemonMoves(widget.pokemon1.id),
+        PokemonMoveService.fetchPokemonMoves(widget.pokemon2.id),
+      ]);
 
-      // Verifica se os movimentos foram carregados corretamente
-      if (moves1.isEmpty) {
-        print('ALERTA: Lista de movimentos do Pokémon 1 está vazia! Usando movimentos padrão.');
-        moves1 = PokemonMoveService.getDefaultMoves();
-      }
-      
-      if (moves2.isEmpty) {
-        print('ALERTA: Lista de movimentos do Pokémon 2 está vazia! Usando movimentos padrão.');
-        moves2 = PokemonMoveService.getDefaultMoves();
-      }
-
-      // Atualiza o estado com os dados carregados ou valores padrão
       if (mounted) {
         setState(() {
-          pokemon1Moves = moves1;
-          pokemon2Moves = moves2;
-          pokemon1MaxHP = hp1;
-          pokemon2MaxHP = hp2;
-          pokemon1HP = pokemon1MaxHP;
-          pokemon2HP = pokemon2MaxHP;
+          player1 = results[0] as Pokemon;
+          player2 = results[1] as Pokemon;
+          pokemon1Moves = results[2] as List<PokemonMove>;
+          pokemon2Moves = results[3] as List<PokemonMove>;
+
+          // Garante que as listas de movimentos não estão vazias
+          if (pokemon1Moves.isEmpty) {
+            pokemon1Moves = PokemonMoveService.getDefaultMoves();
+          }
+          if (pokemon2Moves.isEmpty) {
+            pokemon2Moves = PokemonMoveService.getDefaultMoves();
+          }
+
           isLoading = false;
           _battleScreenReady = true;
-          battleLog = 'Um ${widget.pokemon2.name} selvagem apareceu!';
+          battleLog = 'Um ${player2.name} selvagem apareceu!';
         });
         print('Dados carregados com sucesso. Tela de batalha pronta.');
-        print('Pokémon 1 (${widget.pokemon1.name}) - Movimentos: ${pokemon1Moves.length}, HP: $pokemon1HP/$pokemon1MaxHP');
-        print('Pokémon 2 (${widget.pokemon2.name}) - Movimentos: ${pokemon2Moves.length}, HP: $pokemon2HP/$pokemon2MaxHP');
+        print('Jogador 1 (${player1.name}) - Movimentos: ${pokemon1Moves.length}, HP: ${player1.hp}/${player1.maxHp}');
+        print('Jogador 2 (${player2.name}) - Movimentos: ${pokemon2Moves.length}, HP: ${player2.hp}/${player2.maxHp}');
       }
     } catch (e) {
-      print('Erro geral ao carregar dados: $e');
+      print('Erro ao carregar dados da batalha: $e');
       if (mounted) {
         setState(() {
-          pokemon1MaxHP = 100;
-          pokemon2MaxHP = 100;
-          pokemon1HP = 100;
-          pokemon2HP = 100;
-          pokemon1Moves = PokemonMoveService.getDefaultMoves();
-          pokemon2Moves = PokemonMoveService.getDefaultMoves();
           isLoading = false;
-          _battleScreenReady = true;
-          battleLog = 'Um ${widget.pokemon2.name} selvagem apareceu!';
+          battleLog = 'Erro ao carregar a batalha. Tente novamente.';
         });
-        print('Usando valores padrão devido a erros.');
       }
     }
   }
 
-  Future<void> _executeMove(PokemonMove move) async {
+  void _playerTurn(PokemonMove move) {
     if (isAnimating) return;
 
+    final attacker = isPlayer1Turn ? player1 : player2;
+    final defender = isPlayer1Turn ? player2 : player1;
+    
     setState(() {
+      battleLog = '${attacker.name} usa ${move.name}!';
       isAnimating = true;
-      battleLog = '${isPlayer1Turn ? widget.pokemon1.name : widget.pokemon2.name} usa ${move.name}!';
     });
 
-    bool hitSuccess = BattleService.checkHitSuccess(move.accuracy);
-
-    if (!hitSuccess) {
-      try {
-        // Desativado para web
-        // await _audioService.playSound('assets/sounds/effects/miss.ogg');
-        print('Som de erro (desativado para web)');
-      } catch (e) {
-        print('Erro ao tocar som de erro: $e');
-      }
-      setState(() {
-        battleLog = 'O ataque de ${isPlayer1Turn ? widget.pokemon1.name : widget.pokemon2.name} errou!';
-        isAnimating = false;
-        isPlayer1Turn = !isPlayer1Turn;
-      });
+    _attackAnimationController.forward().then((_) async {
+      final isHit = BattleService.checkHitSuccess(move.accuracy);
       
-      if (!isPlayer1Turn) {
-        await Future.delayed(Duration(milliseconds: 1000));
-        await _executeAIMove();
-      }
-      return;
-    }
+      if (isHit) {
+        final damage = BattleService.calculateDamage(
+          move,
+          attacker,
+          defender,
+        );
+        
+        if (isPlayer1Turn) {
+          final newHP = (player2.hp - damage).clamp(0, player2.maxHp);
+          setState(() => player2 = player2.copyWith(hp: newHP.toDouble()));
+        } else {
+          final newHP = (player1.hp - damage).clamp(0, player1.maxHp);
+          setState(() => player1 = player1.copyWith(hp: newHP.toDouble()));
+        }
 
-    // Sequência de animação de ataque
-    try {
-      // Desativado para web
-      // await _audioService.playSound('assets/sounds/effects/attack.ogg');
-      print('Som de ataque (desativado para web)');
-    } catch (e) {
-      print('Erro ao tocar som de ataque: $e');
-    }
-    await _attackAnimationController.forward();
-    await _attackAnimationController.reverse();
+        await _shakeAnimationController.forward();
+        _shakeAnimationController.reset();
 
-    // Flash de ataque
-    _flashAnimationController.forward();
-    await Future.delayed(Duration(milliseconds: 50));
-    await _flashAnimationController.reverse();
-
-    // Animação de dano no oponente
-    try {
-      // Desativado para web
-      // await _audioService.playSound('assets/sounds/effects/hit.ogg');
-      print('Som de acerto (desativado para web)');
-    } catch (e) {
-      print('Erro ao tocar som de acerto: $e');
-    }
-    await _shakeAnimationController.forward();
-    await _shakeAnimationController.reverse();
-
-    // Calcula e aplica o dano
-    double damage = BattleService.calculateDamage(move);
-    setState(() {
-      if (isPlayer1Turn) {
-        pokemon2HP = math.max(0, pokemon2HP - damage);
-        battleLog = '${widget.pokemon1.name} causou ${damage.toInt()} de dano! (${pokemon2HP.toInt()}/${pokemon2MaxHP.toInt()} HP)';
+        setState(() {
+          battleLog = BattleService.generateBattleLog(
+            attackerName: attacker.name,
+            moveName: move.name,
+            isHit: true,
+            damage: damage,
+            remainingHP: (isPlayer1Turn ? player2.hp : player1.hp).toDouble(),
+            maxHP: (isPlayer1Turn ? player2.maxHp : player1.maxHp).toDouble(),
+          );
+        });
       } else {
-        pokemon1HP = math.max(0, pokemon1HP - damage);
-        battleLog = '${widget.pokemon2.name} causou ${damage.toInt()} de dano! (${pokemon1HP.toInt()}/${pokemon1MaxHP.toInt()} HP)';
+        setState(() {
+          battleLog = 'O ataque de ${attacker.name} errou!';
+          isAnimating = false;
+          isPlayer1Turn = !isPlayer1Turn;
+        });
+        
+        if (!isPlayer1Turn) {
+          Future.delayed(Duration(milliseconds: 1500), _aiTurn);
+        }
+      }
+      
+      if (player1.hp <= 0 || player2.hp <= 0) {
+        _handleBattleEnd();
       }
     });
-
-    await _damageAnimationController.forward();
-    await _damageAnimationController.reverse();
-
-    // Verifica se a batalha acabou
-    if (pokemon1HP <= 0 || pokemon2HP <= 0) {
-      try {
-        // Desativado para web
-        // await _audioService.playSound('assets/sounds/effects/faint.ogg');
-        print('Som de derrota (desativado para web)');
-      } catch (e) {
-        print('Erro ao tocar som de derrota: $e');
-      }
-      setState(() {
-        battleLog = '${pokemon1HP <= 0 ? widget.pokemon2.name : widget.pokemon1.name} venceu a batalha!';
-      });
-      _showBattleEndDialog();
-    } else {
-      setState(() {
-        isAnimating = false;
-        isPlayer1Turn = !isPlayer1Turn;
-      });
-
-      if (!isPlayer1Turn) {
-        await Future.delayed(Duration(milliseconds: 1000));
-        await _executeAIMove();
-      }
-    }
   }
 
-  Future<void> _executeAIMove() async {
-    if (pokemon1HP <= 0 || pokemon2HP <= 0) return;
+  void _handleBattleEnd() {
+    setState(() {
+      battleLog = '${player1.hp <= 0 ? player2.name : player1.name} venceu!';
+      isAnimating = true;
+    });
+    Future.delayed(Duration(seconds: 2), () {
+      if (mounted) {
+        _showBattleEndDialog();
+      }
+    });
+  }
 
-    final selectedMove = BattleService.selectAIMove(
+  void _aiTurn() {
+    if (isAnimating || pokemon2Moves.isEmpty) return;
+
+    final move = BattleService.selectAIMove(
       pokemon2Moves,
-      pokemon2HP,
-      pokemon1HP,
-      pokemon2MaxHP,
+      player2,
+      player1,
     );
-
-    await _executeMove(selectedMove);
+    _playerTurn(move);
   }
 
   void _showBattleEndDialog() {
@@ -392,7 +288,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: Text('Batalha Finalizada!'),
-        content: Text('${pokemon1HP <= 0 ? widget.pokemon2.name : widget.pokemon1.name} é o vencedor!'),
+        content: Text('${player1.hp <= 0 ? player2.name : player1.name} é o vencedor!'),
         actions: [
           TextButton(
             onPressed: () {
@@ -511,10 +407,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                      mainAxisAlignment: MainAxisAlignment.end,
                                      children: [
                                        PokemonInfo(
-                                         pokemon: widget.pokemon2,
-                                         hp: pokemon2HP,
-                                         maxHp: pokemon2MaxHP,
-                                         isLeft: false,
+                                         pokemon: player2,
+                                         hp: player2.hp,
+                                         maxHp: player2.maxHp,
+                                         isLeft: true,
                                        ),
                                      ],
                                    ),
@@ -523,10 +419,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                      mainAxisAlignment: MainAxisAlignment.start,
                                      children: [
                                        PokemonInfo(
-                                         pokemon: widget.pokemon1,
-                                         hp: pokemon1HP,
-                                         maxHp: pokemon1MaxHP,
-                                         isLeft: true,
+                                         pokemon: player1,
+                                         hp: player1.hp,
+                                         maxHp: player1.maxHp,
+                                         isLeft: false,
                                        ),
                                      ],
                                    ),
@@ -539,7 +435,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                right: 30,
                                top: 120,
                                child: _buildPokemonImage(
-                                 widget.pokemon2,
+                                 player2,
                                  false,
                                  _floatingAnimation,
                                  _attackAnimation,
@@ -551,7 +447,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                left: 30,
                                bottom: 80,
                                child: _buildPokemonImage(
-                                 widget.pokemon1,
+                                 player1,
                                  true,
                                  _floatingAnimation,
                                  _attackAnimation,
@@ -629,7 +525,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                   children: pokemon1Moves.map((move) => MoveButton(
                                     move: move,
                                     isDisabled: isAnimating,
-                                    onMoveSelected: _executeMove,
+                                    onMoveSelected: _playerTurn,
                                   )).toList(),
                                 ),
                               ),
