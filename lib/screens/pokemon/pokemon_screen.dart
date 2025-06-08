@@ -21,8 +21,11 @@ import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
+import '../tournament/tournament_screen.dart';
 
 class PokemonScreen extends StatefulWidget {
+  const PokemonScreen({super.key});
+
   @override
   _PokemonScreenState createState() => _PokemonScreenState();
 }
@@ -71,7 +74,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   
   // Filtros
   Map<String, bool> selectedTypes = {};
-  RangeValues powerRange = RangeValues(0, 1000);
+  RangeValues powerRange = const RangeValues(0, 1000);
   int selectedGeneration = 0;
   bool showAdvancedSearch = false;
   bool isFiltering = false;
@@ -88,11 +91,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void _setupAnimationControllers() {
     _animationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
     );
     
     _bannerAnimationController = AnimationController(
-      duration: Duration(milliseconds: 4000),
+      duration: const Duration(milliseconds: 4000),
       vsync: this,
     )..addStatusListener((status) {
       if (status == AnimationStatus.completed) {
@@ -106,7 +109,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     _shakeController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
     )..addStatusListener((status) {
       if (status == AnimationStatus.completed) {
         _shakeController.reverse();
@@ -117,12 +120,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     _cardAnimationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
     );
 
     _loadingAnimationController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1500),
     )..repeat();
   }
 
@@ -158,7 +161,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         selectedTypes: selectedTypes,
         selectedGeneration: selectedGeneration,
         powerRange: powerRange,
-      ).timeout(Duration(seconds: 20), onTimeout: () {
+      ).timeout(const Duration(seconds: 20), onTimeout: () {
         print('Timeout ao carregar Pokémon');
         return {
           'pokemons': _getDefaultPokemons(),
@@ -391,35 +394,46 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   Color getTypeColor(String type) {
     final colors = {
-      'fire': Color(0xFFEE8130),
-      'water': Color(0xFF6390F0),
-      'grass': Color(0xFF7AC74C),
-      'electric': Color(0xFFF7D02C),
-      'psychic': Color(0xFFF95587),
-      'ice': Color(0xFF96D9D6),
-      'dragon': Color(0xFF6F35FC),
-      'dark': Color(0xFF705746),
-      'fairy': Color(0xFFD685AD),
-      'fighting': Color(0xFFC22E28),
-      'flying': Color(0xFFA98FF3),
-      'poison': Color(0xFFA33EA1),
-      'ground': Color(0xFFE2BF65),
-      'rock': Color(0xFFB6A136),
-      'bug': Color(0xFFA6B91A),
-      'ghost': Color(0xFF735797),
-      'steel': Color(0xFFB7B7CE),
-      'normal': Color(0xFFA8A77A),
+      'fire': const Color(0xFFEE8130),
+      'water': const Color(0xFF6390F0),
+      'grass': const Color(0xFF7AC74C),
+      'electric': const Color(0xFFF7D02C),
+      'psychic': const Color(0xFFF95587),
+      'ice': const Color(0xFF96D9D6),
+      'dragon': const Color(0xFF6F35FC),
+      'dark': const Color(0xFF705746),
+      'fairy': const Color(0xFFD685AD),
+      'fighting': const Color(0xFFC22E28),
+      'flying': const Color(0xFFA98FF3),
+      'poison': const Color(0xFFA33EA1),
+      'ground': const Color(0xFFE2BF65),
+      'rock': const Color(0xFFB6A136),
+      'bug': const Color(0xFFA6B91A),
+      'ghost': const Color(0xFF735797),
+      'steel': const Color(0xFFB7B7CE),
+      'normal': const Color(0xFFA8A77A),
     };
     return colors[type.toLowerCase()] ?? Colors.grey;
   }
 
   void _handlePokemonTap(Pokemon pokemon) {
+    // Se um modo especial (Batalha/Comparação) estiver ativo, use a lógica dedicada.
     if (isComparisonMode) {
       _handleComparisonTap(pokemon);
-    } else if (isBattleMode) {
+      return;
+    }
+    if (isBattleMode) {
       _handleBattleTap(pokemon);
-    } else {
+      return;
+    }
+
+    // Lógica de seleção padrão:
+    // Se o Pokémon clicado já for o selecionado, vá para os detalhes.
+    if (_selectedPokemonNotifier.value?.id == pokemon.id) {
       _handleDetailTap(pokemon);
+    } else {
+      // Caso contrário, apenas selecione o Pokémon.
+      _selectedPokemonNotifier.value = pokemon;
     }
   }
 
@@ -444,7 +458,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     } else if (pokemonToCompare!.id == pokemon.id) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Selecione outro Pokémon para comparar!'),
+          content: const Text('Selecione outro Pokémon para comparar!'),
           backgroundColor: Colors.orange[700],
         ),
       );
@@ -477,7 +491,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       });
 
     } else if (_pokemon1ForBattle!.id == pokemon.id) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pokémon já selecionado. Escolha o oponente!'), backgroundColor: Colors.orange[700]));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Pokémon já selecionado. Escolha o oponente!'), backgroundColor: Colors.orange[700]));
 
     } else {
       setState(() => _isLoadingStats = true);
@@ -592,7 +606,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       isComparisonMode = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
               Icon(Icons.sports_kabaddi, color: Colors.white),
               SizedBox(width: 12),
@@ -614,7 +628,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       isBattleMode = true;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Row(
+          content: const Row(
             children: [
               Icon(Icons.catching_pokemon, color: Colors.white),
               SizedBox(width: 12),
@@ -649,17 +663,17 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     // Scroll para o topo
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(0, duration: Duration(milliseconds: 300), curve: Curves.easeOut);
+      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
 
   Widget _buildPageButton(int pageNumber) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 4),
       child: TextButton(
         onPressed: () => _changePage(pageNumber),
         style: TextButton.styleFrom(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           backgroundColor: Colors.grey[200],
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -682,7 +696,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        double imageHeight = constraints.maxHeight * 0.65;
+        double imageHeight = constraints.maxHeight * 0.6;
 
         return AnimatedBuilder(
           animation: _cardAnimationController,
@@ -704,7 +718,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           child: GestureDetector(
             onTap: () => _handlePokemonTap(pokemon),
             child: AnimatedContainer(
-              duration: Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 300),
               curve: Curves.easeOutQuart,
               decoration: BoxDecoration(
                 color: Colors.white,
@@ -737,7 +751,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
@@ -756,7 +770,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                               typeColor.withOpacity(0.15),
                               typeColor.withOpacity(0.0),
                             ],
-                            stops: [0.0, 0.5, 1.0],
+                            stops: const [0.0, 0.5, 1.0],
                           ),
                         ),
                       ),
@@ -768,7 +782,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         Container(
                           height: imageHeight,
                           alignment: Alignment.center,
-                          padding: EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
                           child: Hero(
                             tag: 'pokemon-${pokemon.id}',
                             child: Image(
@@ -780,47 +794,54 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         ),
                         Expanded(
                           child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Text(
                                   pokemon.name.toUpperCase(),
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(
+                                  style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
+                                    fontSize: 15,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
-                                SizedBox(height: 8),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  spacing: 4,
-                                  runSpacing: 4,
-                                  children: pokemon.types.map((type) {
-                                    final color = getTypeColor(type);
-                                    return Container(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                      constraints: BoxConstraints(maxWidth: constraints.maxWidth * 0.45),
-                                      decoration: BoxDecoration(
-                                        color: color,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Text(
-                                        type.toUpperCase(),
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
+                                const SizedBox(height: 4),
+                                Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: pokemon.types.map((type) {
+                                        final color = getTypeColor(type); // Note que aqui não tem 'widget.'
+                                        return Container(
+                                            margin: const EdgeInsets.symmetric(horizontal: 2),
+                                            width: 20,
+                                            height: 20,
+                                            decoration: BoxDecoration(
+                                                color: color,
+                                                shape: BoxShape.circle,
+                                                boxShadow: [
+                                                    BoxShadow(
+                                                        color: Colors.black.withOpacity(0.2),
+                                                        spreadRadius: 1,
+                                                        blurRadius: 2,
+                                                        offset: const Offset(0, 1),
+                                                    ),
+                                                ],
+                                            ),
+                                            child: Center(
+                                                child: Text(
+                                                    type.substring(0, 1).toUpperCase(),
+                                                    style: const TextStyle(
+                                                        color: Colors.white,
+                                                        fontSize: 11,
+                                                        fontWeight: FontWeight.bold,
+                                                    ),
+                                                ),
+                                            ),
+                                        );
+                                    }).toList(),
+                                )
                               ],
                             ),
                           ),
@@ -834,7 +855,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                           return Transform.rotate(
                             angle: _loadingAnimationController.value * 2 * math.pi,
                             child: CustomPaint(
-                              size: Size(40, 40),
+                              size: const Size(40, 40),
                               painter: PokeballPainter(
                                 color: Colors.red[300]!,
                               ),
@@ -848,7 +869,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.error_outline, color: Colors.red[300], size: 32),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
                             'Erro ao carregar',
                             style: TextStyle(
@@ -882,7 +903,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: EdgeInsets.all(4),
+              padding: const EdgeInsets.all(4),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.9),
                 shape: BoxShape.circle,
@@ -890,7 +911,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   BoxShadow(
                     color: Colors.red.shade900.withOpacity(0.2),
                     blurRadius: 4,
-                    offset: Offset(0, 2),
+                    offset: const Offset(0, 2),
                   ),
                 ],
               ),
@@ -912,7 +933,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 },
               ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             ShaderMask(
               shaderCallback: (bounds) => LinearGradient(
                 colors: [
@@ -932,7 +953,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   shadows: [
                     Shadow(
                       color: Colors.black.withOpacity(0.2),
-                      offset: Offset(1, 1),
+                      offset: const Offset(1, 1),
                       blurRadius: 2,
                     ),
                   ],
@@ -953,7 +974,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        actions: [],
+        actions: const [],
       ),
       body: Stack(
         children: [
@@ -1007,18 +1028,17 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                               else if (searchResults.isEmpty && !isSearching && (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)))
                                 SubtleNoResults(
                                   searchQuery: isSearchMode ? currentSearchQuery : 
-                                    'Nenhum Pokémon encontrado com os filtros selecionados:\n' +
-                                    [
+                                    'Nenhum Pokémon encontrado com os filtros selecionados:\n${[
                                       if (selectedTypes.isNotEmpty) 
                                         'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
                                       if (selectedGeneration > 0) 
                                         'Geração: $selectedGeneration',
                                       if (powerRange != const RangeValues(0, 1000))
                                         'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
-                                    ].join('\n'),
+                                    ].join('\n')}',
                                 )
                               else if (searchResults.isEmpty && !isSearching)
-                                Center(
+                                const Center(
                                   child: CircularProgressIndicator(
                                     valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                                   ),
@@ -1049,14 +1069,14 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                           right: 0,
                           bottom: 0,
                           child: Container(
-                            padding: EdgeInsets.symmetric(vertical: 16),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               boxShadow: [
                                 BoxShadow(
                                   color: Colors.black.withOpacity(0.1),
                                   blurRadius: 8,
-                                  offset: Offset(0, -4),
+                                  offset: const Offset(0, -4),
                                 ),
                               ],
                             ),
@@ -1065,7 +1085,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   IconButton(
-                                    icon: Icon(Icons.arrow_back_ios),
+                                    icon: const Icon(Icons.arrow_back_ios),
                                     onPressed: currentPage > 1
                                       ? () => _changePage(currentPage - 1)
                                       : null,
@@ -1075,20 +1095,20 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                     _buildPageButton(1),
                                   if (currentPage > 3)
                                     Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
                                       child: Text('...', style: TextStyle(color: Colors.grey[600])),
                                     ),
                                   if (currentPage > 1)
                                     _buildPageButton(currentPage - 1),
                                   Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                                     decoration: BoxDecoration(
                                       color: Colors.red[700],
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
                                       currentPage.toString(),
-                                      style: TextStyle(
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
@@ -1098,20 +1118,20 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                                     _buildPageButton(currentPage + 1),
                                   if (currentPage < totalPages - 1)
                                     Padding(
-                                      padding: EdgeInsets.symmetric(horizontal: 8),
+                                      padding: const EdgeInsets.symmetric(horizontal: 8),
                                       child: Text('...', style: TextStyle(color: Colors.grey[600])),
                                     ),
                                   if (currentPage < totalPages - 2)
                                     _buildPageButton(totalPages),
                                   IconButton(
-                                    icon: Icon(Icons.arrow_forward_ios),
+                                    icon: const Icon(Icons.arrow_forward_ios),
                                     onPressed: currentPage < totalPages
                                       ? () => _changePage(currentPage + 1)
                                       : null,
                                     color: currentPage < totalPages ? Colors.red[700] : Colors.grey,
                                   ),
                                 ],
-                              ) : SizedBox.shrink(),
+                              ) : const SizedBox.shrink(),
                             ),
                           ),
                         ),
@@ -1123,7 +1143,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           if (isSearching)
             Container(
               color: Colors.black.withOpacity(0.1),
-              child: Center(
+              child: const Center(
                 child: CircularProgressIndicator(
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                 ),
@@ -1148,58 +1168,83 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         children: [
           if (isComparisonMode || isBattleMode) 
             Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 8),
               child: FloatingActionButton(
                 heroTag: 'cancel_action',
                 mini: true,
                 backgroundColor: Colors.red[700],
                 elevation: 4,
-                child: Icon(Icons.close, color: Colors.white),
                 onPressed: _cancelAction,
+                child: Icon(Icons.close, color: Colors.white),
               ),
             ),
           if (!isComparisonMode && !isBattleMode) ...[
             Padding(
-              padding: EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.only(bottom: 8),
+              child: FloatingActionButton(
+                heroTag: 'start_tournament',
+                backgroundColor: Colors.amber[700],
+                elevation: 6,
+                child: const Icon(
+                  Icons.emoji_events,
+                  color: Colors.white,
+                  size: 28,
+                ),
+                onPressed: () {
+                  if (_selectedPokemonNotifier.value != null) {
+                    _showTournamentConfirmation();
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
+                        backgroundColor: Colors.amber.shade800,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
               child: FloatingActionButton(
                 heroTag: 'start_battle',
                 backgroundColor: Colors.blue[700],
                 elevation: 6,
+                onPressed: _handleBattleMode,
                 child: Icon(
                   Icons.catching_pokemon,
                   color: Colors.white,
                   size: 28,
                 ),
-                onPressed: _handleBattleMode,
               ),
             ),
             FloatingActionButton(
               heroTag: 'start_comparison',
               backgroundColor: Colors.red[700],
               elevation: 6,
+              onPressed: _handleComparisonMode,
               child: Icon(
                 Icons.compare,
                 color: Colors.white,
                 size: 28,
               ),
-              onPressed: _handleComparisonMode,
             ),
           ] else
             FloatingActionButton(
               heroTag: 'action_button',
               backgroundColor: isBattleMode ? Colors.blue[700] : Colors.red[700],
               elevation: 6,
+              onPressed: null,
               child: Icon(
                 isBattleMode ? Icons.catching_pokemon : Icons.compare,
                 color: Colors.white,
                 size: 28,
               ),
-              onPressed: null,
             ),
         ],
       ),
       bottomSheet: isComparisonMode ? Container(
-        padding: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         color: Colors.red[700]?.withOpacity(0.9),
         child: SafeArea(
           child: Row(
@@ -1214,21 +1259,21 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                       height: 40,
                     ),
                   ),
-                  SizedBox(width: 12),
+                  const SizedBox(width: 12),
                   Text(
                     pokemonToCompare!.name.toUpperCase(),
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
-              ) else SizedBox.shrink(),
+              ) else const SizedBox.shrink(),
               Text(
                 pokemonToCompare == null 
                   ? 'Selecione o primeiro Pokémon'
                   : 'Selecione o oponente',
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w500,
                 ),
@@ -1253,7 +1298,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   void _handlePokemonSelectionChange() {
-    // Lógica existente, se houver
+    // Garante que a UI reconstrua ao mudar o pokémon selecionado
+    setState(() {});
   }
 
   void _handleComparisonModeChange() {
@@ -1272,6 +1318,97 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           _selectedPokemonNotifier.value = null;
        });
     }
+  }
+
+  void _showTournamentConfirmation() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return ValueListenableBuilder<Pokemon?>(
+          valueListenable: _selectedPokemonNotifier,
+          builder: (context, currentPokemon, child) {
+            if (currentPokemon == null) {
+              Navigator.pop(context);
+              return const SizedBox.shrink();
+            }
+
+            final typeColor = getTypeColor(currentPokemon.types.first);
+
+            return Container(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(24),
+                  topRight: Radius.circular(24),
+                ),
+                border: Border(top: BorderSide(color: typeColor, width: 4)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Confirmar para o Torneio?',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                  ),
+                  const SizedBox(height: 16),
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: typeColor.withOpacity(0.1),
+                    child: CachedNetworkImage(
+                      imageUrl: currentPokemon.imageUrl,
+                      height: 80,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    currentPokemon.name.toUpperCase(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.grey.shade700,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          side: BorderSide(color: Colors.grey.shade300),
+                        ),
+                        child: Text("Trocar Pokémon"),
+                      ),
+                      ElevatedButton.icon(
+                        icon: const Icon(Icons.emoji_events),
+                        label: const Text("Iniciar Torneio!"),
+                        onPressed: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TournamentScreen(
+                                playerPokemon: currentPokemon,
+                              ),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber.shade700,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _searchPokemonTrigger(String query) async {
