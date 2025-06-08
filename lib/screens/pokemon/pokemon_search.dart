@@ -47,7 +47,7 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
     widget.searchController.addListener(() => _onSearchChanged(widget.searchController.text));
     _pokeballAnimationController = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 2),
+      duration: const Duration(seconds: 2),
     )..repeat();
   }
 
@@ -73,7 +73,7 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
       return;
     }
 
-    _debounce = Timer(Duration(milliseconds: 300), () async {
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
       if (!mounted) return;
       
       try {
@@ -156,12 +156,12 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
 
   Widget _buildSuffixIcon() {
     if (widget.searchController.text.isEmpty) {
-      return SizedBox.shrink();
+      return const SizedBox.shrink();
     }
 
     if (_isSearching) {
       return Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: SizedBox(
           width: 20,
           height: 20,
@@ -189,7 +189,7 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.fromLTRB(12, 12, 12, 8),
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
@@ -197,7 +197,7 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
           BoxShadow(
             color: Colors.red.withOpacity(0.1),
             blurRadius: 12,
-            offset: Offset(0, 4),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -214,9 +214,9 @@ class _PokemonSearchState extends State<PokemonSearch> with SingleTickerProvider
           decoration: InputDecoration(
             hintText: 'Buscar Pokémon...',
             border: InputBorder.none,
-            contentPadding: EdgeInsets.symmetric(horizontal: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
             prefixIcon: AnimatedRotation(
-              duration: Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 300),
               turns: widget.isSearching ? 1 : 0,
               child: Icon(
                 Icons.catching_pokemon,

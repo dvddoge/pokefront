@@ -18,7 +18,7 @@ class PokemonInfo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(8),
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
@@ -26,7 +26,7 @@ class PokemonInfo extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 4,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -40,12 +40,12 @@ class PokemonInfo extends StatelessWidget {
             children: [
               Text(
                 pokemon.name.toUpperCase(),
-                style: TextStyle(
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
                 ),
               ),
-              SizedBox(width: 8),
+              const SizedBox(width: 8),
               Text(
                 '${hp.toInt()}/${maxHp.toInt()} HP',
                 style: TextStyle(
@@ -56,7 +56,7 @@ class PokemonInfo extends StatelessWidget {
               ),
             ],
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Container(
             width: 200,
             height: 20,
@@ -80,7 +80,7 @@ class PokemonInfo extends StatelessWidget {
                 Center(
                   child: Text(
                     '${(hp / maxHp * 100).toInt()}%',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
                       color: Colors.black87,

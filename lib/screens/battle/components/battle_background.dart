@@ -59,7 +59,7 @@ class BattleBackgroundPainter extends CustomPainter {
     final center = Offset(size.width * 0.5, size.height * 0.30); // Ajustado de 0.35 para 0.30
     
     // Número de círculos pulsantes
-    final int numCircles = 5;
+    const int numCircles = 5;
     // Raio máximo (um pouco menor que metade da largura para não tocar as bordas)
     final double maxRadius = size.width * 0.4;
 

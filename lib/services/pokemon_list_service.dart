@@ -36,7 +36,7 @@ class PokemonListService {
       // Sempre busca a lista base de nomes/URLs (até 1000)
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0'),
-      ).timeout(Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 15));
 
       if (response.statusCode != 200) {
         print('Erro na resposta da API: ${response.statusCode}');
@@ -92,7 +92,7 @@ class PokemonListService {
 
           // print('Carregando detalhes do Pokémon: ${pokemon['name']} (ID: $pokemonId)');
           final detailResponse = await http.get(Uri.parse(pokemonUrl))
-              .timeout(Duration(seconds: 10)); // Timeout menor para detalhes individuais
+              .timeout(const Duration(seconds: 10)); // Timeout menor para detalhes individuais
               
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
@@ -114,7 +114,7 @@ class PokemonListService {
       try {
         final detailResults = await Future.wait(futures, eagerError: false);
         fetchedPokemons = detailResults
-            .where((result) => result is Pokemon) // Garante que é um Pokemon e não null
+            .whereType<Pokemon>() // Garante que é um Pokemon e não null
             .map((result) => result as Pokemon)
             .toList();
          print('Detalhes carregados para ${fetchedPokemons.length} Pokémon.');
@@ -212,7 +212,7 @@ class PokemonListService {
     }
     try {
       print('Buscando stats para ID $pokemonId...');
-      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId')).timeout(Duration(seconds: 7)); // Timeout um pouco menor
+      final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId')).timeout(const Duration(seconds: 7)); // Timeout um pouco menor
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final stats = <String, int>{};
@@ -288,7 +288,7 @@ class PokemonListService {
       // Aumentar o limite para 1000 Pokémon
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000'),
-      ).timeout(Duration(seconds: 15));
+      ).timeout(const Duration(seconds: 15));
       
       if (response.statusCode != 200) {
         throw Exception('Falha ao buscar Pokémon');
@@ -320,7 +320,7 @@ class PokemonListService {
           }
 
           final detailResponse = await http.get(Uri.parse(pokemonUrl))
-              .timeout(Duration(seconds: 10));
+              .timeout(const Duration(seconds: 10));
               
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
@@ -347,8 +347,8 @@ class PokemonListService {
         // Correção do TypeError: Verificar tipo antes de converter
         final results = await Future.wait(futures, eagerError: false);
         pokemons = results
-            .where((result) => result is Pokemon) // Garante que é um Pokemon
-            .map((result) => result as Pokemon)   // Converte com segurança
+            .whereType<Pokemon>() // Garante que é um Pokemon
+            .map((result) => result)   // Converte com segurança
             .toList();
       } catch (e) {
         print('Erro ao processar resultados da busca: $e');

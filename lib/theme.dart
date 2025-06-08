@@ -10,7 +10,7 @@ class AppTheme {
       foregroundColor: Colors.white,
       elevation: 0,
     ),
-    textTheme: TextTheme(
+    textTheme: const TextTheme(
       displayLarge: TextStyle(
         fontFamily: 'Roboto',
         fontSize: 32,
@@ -64,7 +64,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
     ),
     cardTheme: CardTheme(

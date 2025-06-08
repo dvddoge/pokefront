@@ -4,49 +4,49 @@ class AnimationUtils {
   static AnimationController createBattleController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 500),
     );
   }
 
   static AnimationController createShakeController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
     );
   }
 
   static AnimationController createDamageController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 200),
     );
   }
 
   static AnimationController createAttackController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 600),
     );
   }
 
   static AnimationController createBackgroundController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 12000),
+      duration: const Duration(milliseconds: 12000),
     )..repeat();
   }
 
   static AnimationController createFloatingController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 6000),
+      duration: const Duration(milliseconds: 6000),
     )..repeat();
   }
 
   static AnimationController createFlashController(TickerProvider vsync) {
     return AnimationController(
       vsync: vsync,
-      duration: Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 150),
     );
   }
 
@@ -55,20 +55,20 @@ class AnimationUtils {
       TweenSequenceItem(
         tween: Tween<Offset>(
           begin: Offset.zero,
-          end: Offset(-0.2, -0.1),
+          end: const Offset(-0.2, -0.1),
         ),
         weight: 25.0,
       ),
       TweenSequenceItem(
         tween: Tween<Offset>(
-          begin: Offset(-0.2, -0.1),
-          end: Offset(0.2, 0.1),
+          begin: const Offset(-0.2, -0.1),
+          end: const Offset(0.2, 0.1),
         ),
         weight: 50.0,
       ),
       TweenSequenceItem(
         tween: Tween<Offset>(
-          begin: Offset(0.2, 0.1),
+          begin: const Offset(0.2, 0.1),
           end: Offset.zero,
         ),
         weight: 25.0,

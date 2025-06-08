@@ -64,9 +64,9 @@ class Pokemon {
 
     // Pega os stats da API
     final stats = json['stats'] as List;
-    final getStat = (String name) {
+    getStat(String name) {
       return (stats.firstWhere((s) => s['stat']['name'] == name, orElse: () => {'base_stat': 50})['base_stat'] as int);
-    };
+    }
 
     final int hp = getStat('hp');
 

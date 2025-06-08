@@ -13,7 +13,7 @@ class NoResultsFound extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -35,7 +35,7 @@ class NoResultsFound extends StatelessWidget {
                 alignment: Alignment.center,
                 children: [
                   CustomPaint(
-                    size: Size(150, 150),
+                    size: const Size(150, 150),
                     painter: PokeballPainter(
                       color: Colors.red.withOpacity(0.1),
                     ),
@@ -48,7 +48,7 @@ class NoResultsFound extends StatelessWidget {
                 ],
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Text(
               'Ops! Nenhum Pokémon encontrado',
               style: TextStyle(
@@ -58,7 +58,7 @@ class NoResultsFound extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 12),
+            const SizedBox(height: 12),
             Text(
               'Não encontramos nenhum Pokémon com "$searchQuery"',
               style: TextStyle(
@@ -67,9 +67,9 @@ class NoResultsFound extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             Container(
-              padding: EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.grey.shade50,
                 borderRadius: BorderRadius.circular(12),
@@ -86,7 +86,7 @@ class NoResultsFound extends StatelessWidget {
                       color: Colors.grey[700],
                     ),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     '• Verifique se digitou corretamente\n• Tente usar menos caracteres\n• Tente usar parte do nome',
                     style: TextStyle(

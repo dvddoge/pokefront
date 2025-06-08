@@ -36,14 +36,14 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
     print('Inicializando BattleTransition (Phase: ${widget.phase})');
 
     _curtainController = AnimationController(
-      duration: Duration(milliseconds: 1000), // 1s para fechar/abrir
+      duration: const Duration(milliseconds: 1000), // 1s para fechar/abrir
       // Define o valor inicial baseado na fase
       value: widget.phase == TransitionPhase.opening ? 1.0 : 0.0,
       vsync: this,
     );
 
     _spinController = AnimationController(
-      duration: Duration(seconds: 2), // 2s de giro
+      duration: const Duration(seconds: 2), // 2s de giro
       vsync: this,
     );
 
@@ -85,7 +85,7 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
     // Chama onMidpoint imediatamente pois já estamos no meio
     try {
       // Delay mínimo para garantir que a UI esteja pronta para receber o callback
-      await Future.delayed(Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 50));
       if (_disposed) return;
       print('Chamando onMidpoint (início da fase de abertura)');
       widget.onMidpoint();
@@ -250,7 +250,7 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
             color: Colors.black.withOpacity(0.3),
             spreadRadius: 1,
             blurRadius: 3,
-            offset: Offset(0, 2),
+            offset: const Offset(0, 2),
           ),
         ],
       ),

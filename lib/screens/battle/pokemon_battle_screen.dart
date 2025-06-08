@@ -270,7 +270,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       battleLog = '${player1.hp <= 0 ? player2.name : player1.name} venceu!';
       isAnimating = true;
     });
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
       if (mounted) {
         _showBattleEndDialog();
       }
@@ -290,16 +290,17 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
-        title: Text('Batalha Finalizada!'),
+        title: const Text('Batalha Finalizada!'),
         content: Text('${player1.hp <= 0 ? player2.name : player1.name} é o vencedor!'),
         actions: [
           TextButton(
             onPressed: () {
               _audioService.stopMusic();
+              final isPlayer1Winner = player1.hp > 0;
               Navigator.of(context).pop(); // Fecha o diálogo
-              Navigator.of(context).pop(); // Volta para a tela anterior
+              Navigator.of(context).pop(isPlayer1Winner); // Volta para a tela anterior com o resultado
             },
-            child: Text('OK'),
+            child: const Text('OK'),
           ),
         ],
       ),
@@ -374,7 +375,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
       child: Scaffold(
         backgroundColor: Colors.grey[100],
         appBar: AppBar(
-          title: Text('Batalha Pokémon'),
+          title: const Text('Batalha Pokémon'),
           backgroundColor: Colors.red[900],
         ),
         body: Stack(
@@ -403,7 +404,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
 
                              // Informações dos Pokémon
                              Padding(
-                               padding: EdgeInsets.all(16),
+                               padding: const EdgeInsets.all(16),
                                child: Column(
                                  children: [
                                    Row(
@@ -417,7 +418,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                        ),
                                      ],
                                    ),
-                                   Spacer(),
+                                   const Spacer(),
                                    Row(
                                      mainAxisAlignment: MainAxisAlignment.start,
                                      children: [
@@ -461,13 +462,13 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         ),
                         // Log de batalha
                         Container(
-                          padding: EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(8),
                           color: Colors.white,
                           width: double.infinity,
                           child: Text(
                             battleLog,
                             textAlign: TextAlign.center,
-                            style: TextStyle(
+                            style: const TextStyle(
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -475,10 +476,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                         // Movimentos (Container já deve estar sem o if isPlayer1Turn)
                         Container(
                           width: MediaQuery.of(context).size.width,
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.only(
+                            borderRadius: const BorderRadius.only(
                               topLeft: Radius.circular(24),
                               topRight: Radius.circular(24),
                             ),
@@ -486,7 +487,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                               BoxShadow(
                                 color: Colors.black.withOpacity(0.1),
                                 blurRadius: 8,
-                                offset: Offset(0, -4),
+                                offset: const Offset(0, -4),
                               ),
                             ],
                           ),
@@ -494,8 +495,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                margin: EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                                margin: const EdgeInsets.only(bottom: 16),
                                 decoration: BoxDecoration(
                                   color: Colors.red[700],
                                   borderRadius: BorderRadius.circular(20),
@@ -503,11 +504,11 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                                     BoxShadow(
                                       color: Colors.red.shade900.withOpacity(0.3),
                                       blurRadius: 8,
-                                      offset: Offset(0, 2),
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
-                                child: Text(
+                                child: const Text(
                                   'ESCOLHA SEU MOVIMENTO',
                                   style: TextStyle(
                                     color: Colors.white,
@@ -520,7 +521,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
                               ),
                               Container(
                                 width: MediaQuery.of(context).size.width,
-                                padding: EdgeInsets.symmetric(horizontal: 8),
+                                padding: const EdgeInsets.symmetric(horizontal: 8),
                                 child: Wrap(
                                   spacing: 8,
                                   runSpacing: 8,
@@ -543,7 +544,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
             // Indicador de Loading
             // Mostra se os dados ainda não carregaram E a transição de abertura não está tocando
             if (!_battleScreenReady && !_isOpeningTransitionPlaying)
-               Center(child: CircularProgressIndicator()),
+               const Center(child: CircularProgressIndicator()),
 
             // Transição de ABERTURA
             // Mostra se o estado _isOpeningTransitionPlaying for true

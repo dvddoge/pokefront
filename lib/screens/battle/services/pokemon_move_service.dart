@@ -15,7 +15,7 @@ class PokemonMoveService {
       
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon/$pokemonId'),
-      ).timeout(Duration(seconds: 10));
+      ).timeout(const Duration(seconds: 10));
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -37,7 +37,7 @@ class PokemonMoveService {
             
             // Tenta obter os detalhes do movimento
             final moveResponse = await http.get(Uri.parse(moveUrl))
-                .timeout(Duration(seconds: 5), onTimeout: () {
+                .timeout(const Duration(seconds: 5), onTimeout: () {
               print('Timeout ao carregar detalhes do movimento: $moveName');
               throw Exception('Timeout');
             });
@@ -137,28 +137,28 @@ class PokemonMoveService {
   static List<PokemonMove> getDefaultMoves() {
     print('Retornando movimentos padrão');
     return [
-      PokemonMove(
+      const PokemonMove(
         name: 'Ataque Rápido',
         damage: 40,
         type: 'normal',
         accuracy: 100,
         damageClass: 'physical',
       ),
-      PokemonMove(
+      const PokemonMove(
         name: 'Investida',
         damage: 50,
         type: 'normal',
         accuracy: 100,
         damageClass: 'physical',
       ),
-      PokemonMove(
+      const PokemonMove(
         name: 'Raio de Água',
         damage: 60,
         type: 'water',
         accuracy: 100,
         damageClass: 'special',
       ),
-      PokemonMove(
+      const PokemonMove(
         name: 'Folha Navalha',
         damage: 55,
         type: 'grass',

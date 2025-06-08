@@ -30,7 +30,7 @@ class PokemonListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Pokémon App'),
+        title: const Text('Pokémon App'),
         backgroundColor: Colors.red[700],
       ),
       body: Center(
@@ -41,7 +41,7 @@ class PokemonListScreen extends StatelessWidget {
               'Carregando aplicativo...',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             CircularProgressIndicator(
               color: Colors.red[700],
             ),

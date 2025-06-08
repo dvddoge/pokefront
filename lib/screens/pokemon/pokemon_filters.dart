@@ -28,12 +28,12 @@ class PokemonFilters extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: Duration(milliseconds: 300),
+      duration: const Duration(milliseconds: 300),
       height: showAdvancedSearch ? null : 0,
       child: Card(
-        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Padding(
-          padding: EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -43,12 +43,12 @@ class PokemonFilters extends StatelessWidget {
                 onTypesChanged: onTypesChanged,
                 getTypeColor: getTypeColor,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               GenerationFilter(
                 selectedGeneration: selectedGeneration,
                 onGenerationChanged: onGenerationChanged,
               ),
-              SizedBox(height: 16),
+              const SizedBox(height: 16),
               PowerRangeFilter(
                 powerRange: powerRange,
                 onPowerRangeChanged: onPowerRangeChanged,

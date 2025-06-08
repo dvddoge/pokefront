@@ -26,7 +26,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
   late Future<Map<String, dynamic>> _pokemonDetailFuture;
   late AnimationController _bannerAnimationController;
   late Animation<double> _floatingAnimation;
-  GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
   void initState() {
@@ -34,7 +34,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
     _pokemonDetailFuture = fetchPokemonDetail(widget.pokemonId);
     
     _bannerAnimationController = AnimationController(
-      duration: Duration(milliseconds: 4000), // Aumentando a duração para ser mais suave
+      duration: const Duration(milliseconds: 4000), // Aumentando a duração para ser mais suave
       vsync: this,
     );
 
@@ -136,10 +136,10 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
           future: _pokemonDetailFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(
+              return const Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: const [
+                  children: [
                     CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                     ),
@@ -161,7 +161,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                   children: [
                     const Icon(Icons.error_outline, size: 48, color: Colors.red),
                     const SizedBox(height: 16.0),
-                    Text(
+                    const Text(
                       'Erro ao carregar detalhes',
                       style: TextStyle(
                         color: Colors.red,
@@ -230,7 +230,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            offset: Offset(2, 2),
+                            offset: const Offset(2, 2),
                             blurRadius: 4,
                             color: Colors.black.withOpacity(0.3),
                           ),
@@ -282,7 +282,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                       highlightColor: Colors.grey[100]!,
                                       child: Container(color: Colors.white),
                                     ),
-                                    errorWidget: (context, url, error) => Icon(Icons.error),
+                                    errorWidget: (context, url, error) => const Icon(Icons.error),
                                   ),
                                 ),
                               );
@@ -311,7 +311,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                 BoxShadow(
                                   color: getTypeColor(type).withOpacity(0.3),
                                   blurRadius: 8,
-                                  offset: Offset(0, 2),
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -333,7 +333,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Container(
-                            padding: EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(16),
                               gradient: LinearGradient(
@@ -352,17 +352,17 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                     color: typeColor,
                                   ),
                                 ),
-                                SizedBox(height: 16),
+                                const SizedBox(height: 16),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                                   children: [
-                                    _buildInfoItem('Altura', height.toStringAsFixed(1) + 'm'),
+                                    _buildInfoItem('Altura', '${height.toStringAsFixed(1)}m'),
                                     Container(
                                       width: 1,
                                       height: 40,
                                       color: Colors.grey.withOpacity(0.3),
                                     ),
-                                    _buildInfoItem('Peso', weight.toStringAsFixed(1) + 'kg'),
+                                    _buildInfoItem('Peso', '${weight.toStringAsFixed(1)}kg'),
                                     Container(
                                       width: 1,
                                       height: 40,
@@ -378,26 +378,26 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                         const SizedBox(height: 24.0),
 
                         // Stats
-                        Text(
+                        const Text(
                           'Estatísticas',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 16),
+                        const SizedBox(height: 16),
                         ..._buildStats(stats, typeColor),
                         const SizedBox(height: 24.0),
 
                         // Abilities
-                        Text(
+                        const Text(
                           'Habilidades',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        SizedBox(height: 8),
+                        const SizedBox(height: 8),
                         _buildAbilities(abilities, typeColor),
                         const SizedBox(height: 24.0),
 
@@ -433,7 +433,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                     fontSize: 14,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: const TextStyle(
@@ -462,12 +462,12 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
     return stats.entries.map((stat) {
       final percentage = (stat.value as int) / 255.0;
       return TweenAnimationBuilder<double>(
-        duration: Duration(milliseconds: 1000),
+        duration: const Duration(milliseconds: 1000),
         tween: Tween<double>(begin: 0, end: percentage),
         builder: (context, double animValue, child) {
           return Container(
-            padding: EdgeInsets.all(8),
-            margin: EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -475,7 +475,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                 BoxShadow(
                   color: typeColor.withOpacity(0.1),
                   blurRadius: 8,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
@@ -487,7 +487,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                   children: [
                     Text(
                       statNames[stat.key] ?? stat.key,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontWeight: FontWeight.w500,
                         color: Colors.black87,
                       ),
@@ -501,7 +501,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                     ),
                   ],
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Stack(
                   children: [
                     Container(
@@ -514,7 +514,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                     LayoutBuilder(
                       builder: (context, constraints) {
                         return AnimatedContainer(
-                          duration: Duration(milliseconds: 500),
+                          duration: const Duration(milliseconds: 500),
                           height: 8,
                           width: constraints.maxWidth * animValue,
                           decoration: BoxDecoration(
@@ -529,7 +529,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                               BoxShadow(
                                 color: typeColor.withOpacity(0.2),
                                 blurRadius: 4,
-                                offset: Offset(0, 2),
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
@@ -553,8 +553,8 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
       children: abilities.map((ability) => MouseRegion(
         cursor: SystemMouseCursors.click,
         child: AnimatedContainer(
-          duration: Duration(milliseconds: 200),
-          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -562,7 +562,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
               BoxShadow(
                 color: typeColor.withOpacity(0.2),
                 blurRadius: 8,
-                offset: Offset(0, 2),
+                offset: const Offset(0, 2),
               ),
             ],
           ),
@@ -579,19 +579,19 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
   }
 
   Widget _buildEvolutionChain(List<Map<String, dynamic>> evolutionChain, Color typeColor) {
-    if (evolutionChain.isEmpty) return SizedBox.shrink();
+    if (evolutionChain.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Evolução',
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
           ),
         ),
-        SizedBox(height: 16),
+        const SizedBox(height: 16),
         SizedBox(
           height: 150,
           child: ListView.builder(
@@ -608,7 +608,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
               return MouseRegion(
                 cursor: SystemMouseCursors.click,
                 child: Padding(
-                  padding: EdgeInsets.only(right: 16),
+                  padding: const EdgeInsets.only(right: 16),
                   child: GestureDetector(
                     onTap: () {
                       if (evoId != widget.pokemonId) {
@@ -624,14 +624,14 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                       }
                     },
                     child: TweenAnimationBuilder<double>(
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       tween: Tween<double>(begin: 1, end: evoId == widget.pokemonId ? 1.1 : 1.0),
                       builder: (context, scale, child) {
                         return Transform.scale(
                           scale: scale,
                           child: AnimatedContainer(
-                            duration: Duration(milliseconds: 200),
-                            padding: EdgeInsets.all(8),
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: evoId == widget.pokemonId 
                                   ? typeColor.withOpacity(0.2) 
@@ -641,7 +641,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                 BoxShadow(
                                   color: typeColor.withOpacity(0.2),
                                   blurRadius: 8,
-                                  offset: Offset(0, 2),
+                                  offset: const Offset(0, 2),
                                 ),
                               ],
                             ),
@@ -655,9 +655,9 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                     highlightColor: Colors.grey[100]!,
                                     child: Container(color: Colors.white),
                                   ),
-                                  errorWidget: (context, url, error) => Icon(Icons.error),
+                                  errorWidget: (context, url, error) => const Icon(Icons.error),
                                 ),
-                                SizedBox(height: 8),
+                                const SizedBox(height: 8),
                                 Text(
                                   evo['name'].toString().toUpperCase(),
                                   style: TextStyle(
@@ -685,24 +685,24 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
 
   Color getTypeColor(String type) {
     final colors = {
-      'fire': Color(0xFFEE8130),
-      'water': Color(0xFF6390F0),
-      'grass': Color(0xFF7AC74C),
-      'electric': Color(0xFFF7D02C),
-      'psychic': Color(0xFFF95587),
-      'ice': Color(0xFF96D9D6),
-      'dragon': Color(0xFF6F35FC),
-      'dark': Color(0xFF705746),
-      'fairy': Color(0xFFD685AD),
-      'fighting': Color(0xFFC22E28),
-      'flying': Color(0xFFA98FF3),
-      'poison': Color(0xFFA33EA1),
-      'ground': Color(0xFFE2BF65),
-      'rock': Color(0xFFB6A136),
-      'bug': Color(0xFFA6B91A),
-      'ghost': Color(0xFF735797),
-      'steel': Color(0xFFB7B7CE),
-      'normal': Color(0xFFA8A77A),
+      'fire': const Color(0xFFEE8130),
+      'water': const Color(0xFF6390F0),
+      'grass': const Color(0xFF7AC74C),
+      'electric': const Color(0xFFF7D02C),
+      'psychic': const Color(0xFFF95587),
+      'ice': const Color(0xFF96D9D6),
+      'dragon': const Color(0xFF6F35FC),
+      'dark': const Color(0xFF705746),
+      'fairy': const Color(0xFFD685AD),
+      'fighting': const Color(0xFFC22E28),
+      'flying': const Color(0xFFA98FF3),
+      'poison': const Color(0xFFA33EA1),
+      'ground': const Color(0xFFE2BF65),
+      'rock': const Color(0xFFB6A136),
+      'bug': const Color(0xFFA6B91A),
+      'ghost': const Color(0xFF735797),
+      'steel': const Color(0xFFB7B7CE),
+      'normal': const Color(0xFFA8A77A),
     };
     return colors[type.toLowerCase()] ?? Colors.grey;
   }
@@ -710,7 +710,7 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
 
 Widget buildTypeChip(String type, Color color) {
   return Container(
-    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
     decoration: BoxDecoration(
       color: color,
       borderRadius: BorderRadius.circular(16),
@@ -718,13 +718,13 @@ Widget buildTypeChip(String type, Color color) {
         BoxShadow(
           color: color.withOpacity(0.4),
           blurRadius: 4,
-          offset: Offset(0, 2),
+          offset: const Offset(0, 2),
         ),
       ],
     ),
     child: Text(
       type.toUpperCase(),
-      style: TextStyle(
+      style: const TextStyle(
         color: Colors.white,
         fontWeight: FontWeight.bold,
         fontSize: 12,
@@ -784,7 +784,7 @@ class PokemonComparisonScreen extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
                     onPressed: () => Navigator.pop(context),
                   ),
                   Expanded(
@@ -797,7 +797,7 @@ class PokemonComparisonScreen extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            offset: Offset(2, 2),
+                            offset: const Offset(2, 2),
                             blurRadius: 4,
                             color: Colors.black.withOpacity(0.5),
                           ),
@@ -805,7 +805,7 @@ class PokemonComparisonScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  SizedBox(width: 48), // Para balancear o layout
+                  const SizedBox(width: 48), // Para balancear o layout
                 ],
               ),
             ),
@@ -837,7 +837,7 @@ class PokemonComparisonScreen extends StatelessWidget {
                     totalStats1: totalStats1,
                     totalStats2: totalStats2,
                   ),
-                  SizedBox(height: 16),
+                  const SizedBox(height: 16),
                   _buildDetailedStatsCard(
                     context: context,
                     statNames: statNames,
@@ -886,7 +886,7 @@ class _BattleArenaDelegate extends SliverPersistentHeaderDelegate {
             Colors.red.shade800,
             Colors.orange.shade900,
           ],
-          stops: [0.0, 0.5, 1.0],
+          stops: const [0.0, 0.5, 1.0],
         ),
       ),
       child: Stack(
@@ -907,7 +907,7 @@ class _BattleArenaDelegate extends SliverPersistentHeaderDelegate {
           if (fadeAnimation > 0.3)
             Center(
               child: TweenAnimationBuilder<double>(
-                duration: Duration(milliseconds: 1500),
+                duration: const Duration(milliseconds: 1500),
                 curve: Curves.easeInOut,
                 tween: Tween(begin: 0.0, end: 1.0),
                 builder: (context, value, child) {
@@ -953,7 +953,7 @@ Widget _buildTotalStatsCard({
       borderRadius: BorderRadius.circular(16),
     ),
     child: Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -972,7 +972,7 @@ Widget _buildTotalStatsCard({
               color: Colors.red.shade900,
             ),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -1011,7 +1011,7 @@ Widget _buildDetailedStatsCard({
       borderRadius: BorderRadius.circular(16),
     ),
     child: Container(
-      padding: EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -1030,7 +1030,7 @@ Widget _buildDetailedStatsCard({
               color: Colors.red.shade900,
             ),
           ),
-          SizedBox(height: 24),
+          const SizedBox(height: 24),
           ...statNames.entries.map((stat) {
             return buildStatComparison(
               context,
@@ -1049,7 +1049,7 @@ Widget _buildTotalStats(String name, int total, bool isHigher) {
   return Column(
     children: [
       TweenAnimationBuilder<double>(
-        duration: Duration(milliseconds: 1500),
+        duration: const Duration(milliseconds: 1500),
         tween: Tween(begin: 0, end: 1),
         builder: (context, value, child) {
           return AnimatedCounter(
@@ -1057,7 +1057,7 @@ Widget _buildTotalStats(String name, int total, bool isHigher) {
           );
         },
       ),
-      SizedBox(height: 8),
+      const SizedBox(height: 8),
       Text(
         name.toUpperCase(),
         style: TextStyle(

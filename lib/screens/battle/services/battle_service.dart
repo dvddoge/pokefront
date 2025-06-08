@@ -47,15 +47,15 @@ class BattleService {
     final double defense = move.damageClass == 'physical' ? defender.defense.toDouble() : defender.specialDefense.toDouble();
     
     // Modificadores
-    final double targets = 1.0; // Batalha 1v1
-    final double weather = 1.0; // Não implementado
-    final double badge = 1.0;   // Não implementado
+    const double targets = 1.0; // Batalha 1v1
+    const double weather = 1.0; // Não implementado
+    const double badge = 1.0;   // Não implementado
     final double critical = (math.Random().nextDouble() < 0.0625) ? 1.5 : 1.0;
     final double random = (math.Random().nextInt(16) + 85) / 100.0; // Variação de 85% a 100%
     final double stab = attacker.types.contains(move.type) ? 1.5 : 1.0; // Same-type attack bonus
     final double typeEffectiveness = _getEffectiveness(move.type, defender.types);
-    final double burn = 1.0; // Não implementado
-    final double other = 1.0; // Outros modificadores
+    const double burn = 1.0; // Não implementado
+    const double other = 1.0; // Outros modificadores
 
     final double modifier = targets * weather * badge * critical * random * stab * typeEffectiveness * burn * other;
 
@@ -85,7 +85,7 @@ class BattleService {
   ) {
     if (availableMoves.isEmpty) {
       // Retorna um movimento padrão caso não hajam outros.
-      return PokemonMove(name: "Struggle", damage: 50, type: "normal", accuracy: 100, damageClass: "physical");
+      return const PokemonMove(name: "Struggle", damage: 50, type: "normal", accuracy: 100, damageClass: "physical");
     }
 
     PokemonMove? bestMove;

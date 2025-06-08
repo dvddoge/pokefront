@@ -14,7 +14,7 @@ class SubtleNoResults extends StatelessWidget {
     bool isFilterMessage = searchQuery.contains('\n');
 
     return Container(
-      padding: EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 32),
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -35,7 +35,7 @@ class SubtleNoResults extends StatelessWidget {
                 size: 32,
                 color: Colors.grey[400],
               ),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               if (isFilterMessage)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -62,7 +62,7 @@ class SubtleNoResults extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'Tente buscar usando menos caracteres',
                       style: TextStyle(

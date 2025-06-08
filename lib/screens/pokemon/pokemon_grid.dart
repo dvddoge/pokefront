@@ -117,7 +117,7 @@ class _PokemonGridState extends State<PokemonGrid> {
     try {
       final hasActiveFilters = widget.selectedTypes.isNotEmpty || 
                              widget.selectedGeneration > 0 || 
-                             widget.powerRange != RangeValues(0, 1000);
+                             widget.powerRange != const RangeValues(0, 1000);
 
       final String cacheKey = hasActiveFilters 
         ? '${widget.selectedTypes.toString()}_${widget.selectedGeneration}_${widget.powerRange.toString()}_page_${widget.currentPage}'
@@ -202,8 +202,8 @@ class _PokemonGridState extends State<PokemonGrid> {
                   ),
                 ),
                 if (_isLoading)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
+                  const Padding(
+                    padding: EdgeInsets.all(16.0),
                     child: CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
                     ),
@@ -222,7 +222,7 @@ class _PokemonGridState extends State<PokemonGrid> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        double imageHeight = constraints.maxHeight * 0.65;
+        double imageHeight = constraints.maxHeight * 0.60;
 
         return AnimatedBuilder(
           animation: widget.cardAnimationController,
@@ -249,7 +249,7 @@ class _PokemonGridState extends State<PokemonGrid> {
               }
             },
             child: AnimatedContainer(
-              duration: Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 300),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -263,83 +263,109 @@ class _PokemonGridState extends State<PokemonGrid> {
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
                     blurRadius: 8,
-                    offset: Offset(0, 4),
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: Column(
+              child: Stack(
                 children: [
-                  Container(
-                    height: imageHeight,
-                    alignment: Alignment.center,
-                    padding: EdgeInsets.all(8),
-                    child: Hero(
-                      tag: 'pokemon-${pokemon.id}',
-                      child: CachedNetworkImage(
-                        imageUrl: pokemon.imageUrl,
+                  Column(
+                    children: [
+                      Container(
                         height: imageHeight,
-                        memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
-                        fit: BoxFit.contain,
-                        placeholder: (context, url) => Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                            strokeWidth: 2.0,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(8),
+                        child: Hero(
+                          tag: 'pokemon-${pokemon.id}',
+                          child: CachedNetworkImage(
+                            imageUrl: pokemon.imageUrl,
+                            height: imageHeight,
+                            memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
+                            fit: BoxFit.contain,
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(
+                                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                strokeWidth: 2.0,
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Center(
+                              child: Icon(
+                                Icons.error_outline,
+                                color: Colors.grey[400],
+                                size: imageHeight * 0.5,
+                              ),
+                            ),
                           ),
                         ),
-                        errorWidget: (context, url, error) => Center(
-                          child: Icon(
-                            Icons.error_outline,
-                            color: Colors.grey[400],
-                            size: imageHeight * 0.5,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 4.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                pokemon.name.toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: pokemon.types.map((type) {
+                                  final color = widget.getTypeColor(type);
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          spreadRadius: 1,
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        type.substring(0, 1).toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            ],
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: Text(
+                      '#${pokemon.id.toString().padLeft(3, '0')}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 12,
                       ),
                     ),
                   ),
-                  Expanded(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            pokemon.name.toUpperCase(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: 8),
-                          Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 4,
-                            runSpacing: 4,
-                            children: pokemon.types.map((type) {
-                              final color = widget.getTypeColor(type);
-                              return Container(
-                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: color,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  type.toUpperCase(),
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
                 ],
               ),
             ),

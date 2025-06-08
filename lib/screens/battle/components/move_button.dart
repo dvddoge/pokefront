@@ -20,7 +20,7 @@ class MoveButton extends StatelessWidget {
     final IconData typeIcon = TypeUtils.getTypeIcon(move.type);
 
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Container(
         width: MediaQuery.of(context).size.width * 0.42,
         decoration: BoxDecoration(
@@ -38,7 +38,7 @@ class MoveButton extends StatelessWidget {
             BoxShadow(
               color: typeColor.withOpacity(0.3),
               blurRadius: 8,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
@@ -52,7 +52,7 @@ class MoveButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             onTap: isDisabled ? null : () => onMoveSelected(move),
             child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -60,7 +60,7 @@ class MoveButton extends StatelessWidget {
                   Row(
                     children: [
                       Container(
-                        padding: EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
                           color: typeColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(12),
@@ -71,14 +71,14 @@ class MoveButton extends StatelessWidget {
                           size: 24,
                         ),
                       ),
-                      SizedBox(width: 12),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               move.name.toUpperCase(),
-                              style: TextStyle(
+                              style: const TextStyle(
                                 color: Colors.black87,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 15,
@@ -100,66 +100,79 @@ class MoveButton extends StatelessWidget {
                       ),
                     ],
                   ),
-                  SizedBox(height: 12),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: typeColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: typeColor.withOpacity(0.3),
-                            width: 1,
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: typeColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: typeColor.withOpacity(0.3),
+                              width: 1,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.flash_on,
-                              color: typeColor,
-                              size: 16,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'PWR ${move.damage.toInt()}',
-                              style: TextStyle(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.flash_on,
                                 color: typeColor,
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                size: 16,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'PWR ${move.damage.toInt()}',
+                                  style: TextStyle(
+                                    color: typeColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      Container(
-                        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.grey[300]!,
-                            width: 1,
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: Colors.grey[300]!,
+                              width: 1,
+                            ),
                           ),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.gps_fixed,
-                              color: Colors.grey[600],
-                              size: 16,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'ACC ${move.accuracy.toInt()}%',
-                              style: TextStyle(
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.gps_fixed,
                                 color: Colors.grey[600],
-                                fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                size: 16,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'ACC ${move.accuracy.toInt()}%',
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],

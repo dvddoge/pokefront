@@ -38,7 +38,7 @@ class BannerPatternPainter extends CustomPainter {
       final radius = (maxRadius * (0.5 + i * 0.25) + wave) * scale;
       
       // Movimento orbital mais pronunciado
-      final orbitRadius = 8.0;
+      const orbitRadius = 8.0;
       final rotationOffset = Offset(
         math.cos(phase * 1.5 + i * math.pi / 3) * orbitRadius,
         math.sin(phase * 1.5 + i * math.pi / 3) * orbitRadius
@@ -66,7 +66,7 @@ class BannerPatternPainter extends CustomPainter {
       final pulseOffset = math.sin(phase + i * math.pi / 3) * 6;
       
       // Movimento orbital suave
-      final orbitRadius = 4.0;
+      const orbitRadius = 4.0;
       final rotationOffset = Offset(
         math.cos(phase + i * math.pi / 2) * orbitRadius,
         math.sin(phase + i * math.pi / 2) * orbitRadius

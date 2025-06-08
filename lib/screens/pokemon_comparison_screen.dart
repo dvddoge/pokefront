@@ -10,24 +10,24 @@ import '../widgets/stat_comparison_bar.dart';
 // Funções utilitárias globais
 Color getTypeColor(String type) {
   final colors = {
-    'fire': Color(0xFFEE8130),
-    'water': Color(0xFF6390F0),
-    'grass': Color(0xFF7AC74C),
-    'electric': Color(0xFFF7D02C),
-    'psychic': Color(0xFFF95587),
-    'ice': Color(0xFF96D9D6),
-    'dragon': Color(0xFF6F35FC),
-    'dark': Color(0xFF705746),
-    'fairy': Color(0xFFD685AD),
-    'fighting': Color(0xFFC22E28),
-    'flying': Color(0xFFA98FF3),
-    'poison': Color(0xFFA33EA1),
-    'ground': Color(0xFFE2BF65),
-    'rock': Color(0xFFB6A136),
-    'bug': Color(0xFFA6B91A),
-    'ghost': Color(0xFF735797),
-    'steel': Color(0xFFB7B7CE),
-    'normal': Color(0xFFA8A77A),
+    'fire': const Color(0xFFEE8130),
+    'water': const Color(0xFF6390F0),
+    'grass': const Color(0xFF7AC74C),
+    'electric': const Color(0xFFF7D02C),
+    'psychic': const Color(0xFFF95587),
+    'ice': const Color(0xFF96D9D6),
+    'dragon': const Color(0xFF6F35FC),
+    'dark': const Color(0xFF705746),
+    'fairy': const Color(0xFFD685AD),
+    'fighting': const Color(0xFFC22E28),
+    'flying': const Color(0xFFA98FF3),
+    'poison': const Color(0xFFA33EA1),
+    'ground': const Color(0xFFE2BF65),
+    'rock': const Color(0xFFB6A136),
+    'bug': const Color(0xFFA6B91A),
+    'ghost': const Color(0xFF735797),
+    'steel': const Color(0xFFB7B7CE),
+    'normal': const Color(0xFFA8A77A),
   };
   return colors[type.toLowerCase()] ?? Colors.grey;
 }
@@ -110,7 +110,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
   late Animation<double> _pokemon2ScaleAnimation;
   late Animation<Offset> _pokemon1FloatingAnimation;
   late Animation<Offset> _pokemon2FloatingAnimation;
-  List<BattleParticle> _particles = [];
+  final List<BattleParticle> _particles = [];
   bool _showTypeAdvantage = false;
 
   @override
@@ -119,21 +119,21 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
     
     // Ajustar duração das animações existentes
     _floatingAnimationController = AnimationController(
-      duration: Duration(milliseconds: 4000), // Aumentado para 4 segundos
+      duration: const Duration(milliseconds: 4000), // Aumentado para 4 segundos
       vsync: this,
     )..repeat(reverse: true);
 
     _pokemon1FloatingAnimation = Tween<Offset>(
-      begin: Offset(0, -6),
-      end: Offset(0, 6),
+      begin: const Offset(0, -6),
+      end: const Offset(0, 6),
     ).animate(CurvedAnimation(
       parent: _floatingAnimationController,
       curve: Curves.easeInOut,
     ));
 
     _pokemon2FloatingAnimation = Tween<Offset>(
-      begin: Offset(0, 6),
-      end: Offset(0, -6),
+      begin: const Offset(0, 6),
+      end: const Offset(0, -6),
     ).animate(CurvedAnimation(
       parent: _floatingAnimationController,
       curve: Curves.easeInOut,
@@ -141,12 +141,12 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
 
     // Configurar animações de entrada dos Pokémon
     _pokemon1AnimationController = AnimationController(
-      duration: Duration(milliseconds: 2000), // Aumentado para 2 segundos
+      duration: const Duration(milliseconds: 2000), // Aumentado para 2 segundos
       vsync: this,
     );
 
     _pokemon2AnimationController = AnimationController(
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
 
@@ -196,16 +196,16 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
 
     // Configurar animação de batalha com duração mais longa
     _battleAnimationController = AnimationController(
-      duration: Duration(milliseconds: 6000),
+      duration: const Duration(milliseconds: 6000),
       vsync: this,
     )..repeat();
 
     // Iniciar animações com timing ajustado
-    Future.delayed(Duration(milliseconds: 300), () {
+    Future.delayed(const Duration(milliseconds: 300), () {
       _pokemon1AnimationController.forward();
-      Future.delayed(Duration(milliseconds: 200), () {
+      Future.delayed(const Duration(milliseconds: 200), () {
         _pokemon2AnimationController.forward();
-        Future.delayed(Duration(milliseconds: 800), () {
+        Future.delayed(const Duration(milliseconds: 800), () {
           setState(() => _showTypeAdvantage = true);
         });
       });
@@ -297,14 +297,14 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                         ),
                         if (_showTypeAdvantage && typeAdvantage > 1.0)
                           TweenAnimationBuilder<double>(
-                            duration: Duration(milliseconds: 500),
+                            duration: const Duration(milliseconds: 500),
                             curve: Curves.elasticOut,
                             tween: Tween(begin: 0.0, end: 1.0),
                             builder: (context, value, child) {
                               return Transform.scale(
                                 scale: value,
                                 child: Container(
-                                  padding: EdgeInsets.symmetric(
+                                  padding: const EdgeInsets.symmetric(
                                     horizontal: 8,
                                     vertical: 4,
                                   ),
@@ -315,13 +315,13 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                                       BoxShadow(
                                         color: Colors.black.withOpacity(0.2),
                                         blurRadius: 4,
-                                        offset: Offset(0, 2),
+                                        offset: const Offset(0, 2),
                                       ),
                                     ],
                                   ),
                                   child: Text(
                                     'Vantagem ${(typeAdvantage * 100 - 100).toStringAsFixed(0)}%',
-                                    style: TextStyle(
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -407,7 +407,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                         fontWeight: FontWeight.bold,
                         shadows: [
                           Shadow(
-                            offset: Offset(2, 2),
+                            offset: const Offset(2, 2),
                             blurRadius: 4,
                             color: Colors.black.withOpacity(0.3),
                           ),
@@ -420,7 +420,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                 
                 // Arena de Batalha
                 SliverToBoxAdapter(
-                  child: Container(
+                  child: SizedBox(
                     height: 320,
                     child: Stack(
                       children: [
@@ -449,7 +449,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                                     BoxShadow(
                                       color: Colors.black.withOpacity(0.2),
                                       blurRadius: 8,
-                                      offset: Offset(0, 2),
+                                      offset: const Offset(0, 2),
                                     ),
                                   ],
                                 ),
@@ -505,7 +505,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.only(
+                      borderRadius: const BorderRadius.only(
                         topLeft: Radius.circular(30),
                         topRight: Radius.circular(30),
                       ),
@@ -513,7 +513,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                         BoxShadow(
                           color: Colors.black.withOpacity(0.2),
                           blurRadius: 20,
-                          offset: Offset(0, -5),
+                          offset: const Offset(0, -5),
                         ),
                       ],
                     ),
@@ -534,7 +534,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                                 type1Color: type1Color,
                                 type2Color: type2Color,
                               ),
-                              SizedBox(height: 16),
+                              const SizedBox(height: 16),
                               _buildDetailedStatsCard(
                                 context: context,
                                 statNames: statNames,
@@ -543,7 +543,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                                 type1Color: type1Color,
                                 type2Color: type2Color,
                               ),
-                              SizedBox(height: 32),
+                              const SizedBox(height: 32),
                             ],
                           ),
                         ),
@@ -575,7 +575,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
@@ -590,7 +590,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
               shaderCallback: (bounds) => LinearGradient(
                 colors: [type1Color, type2Color],
               ).createShader(bounds),
-              child: Text(
+              child: const Text(
                 'PODER TOTAL',
                 style: TextStyle(
                   fontSize: 24,
@@ -599,7 +599,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                 ),
               ),
             ),
-            SizedBox(height: 16),
+            const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -650,7 +650,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
         borderRadius: BorderRadius.circular(16),
       ),
       child: Container(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
@@ -665,7 +665,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
               shaderCallback: (bounds) => LinearGradient(
                 colors: [type1Color, type2Color],
               ).createShader(bounds),
-              child: Text(
+              child: const Text(
                 'COMPARAÇÃO DE STATUS',
                 style: TextStyle(
                   fontSize: 24,
@@ -674,7 +674,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                 ),
               ),
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             ...statNames.entries.map((stat) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16.0),
@@ -708,7 +708,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
           alignment: Alignment.center,
           children: [
             TweenAnimationBuilder<double>(
-              duration: Duration(milliseconds: 1500),
+              duration: const Duration(milliseconds: 1500),
               tween: Tween(begin: 0, end: 1),
               builder: (context, value, child) {
                 return Text(
@@ -717,7 +717,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
                     color: textColor,
-                    shadows: [
+                    shadows: const [
                       Shadow(
                         color: Colors.black12,
                         offset: Offset(2, 2),
@@ -733,7 +733,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                 right: -8,
                 top: -8,
                 child: Container(
-                  padding: EdgeInsets.all(4),
+                  padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
                     color: Colors.green,
                     shape: BoxShape.circle,
@@ -741,11 +741,11 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                       BoxShadow(
                         color: Colors.black.withOpacity(0.2),
                         blurRadius: 4,
-                        offset: Offset(0, 2),
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
-                  child: Text(
+                  child: const Text(
                     '↑',
                     style: TextStyle(
                       color: Colors.white,
@@ -757,7 +757,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
               ),
           ],
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Text(
           name.toUpperCase(),
           style: TextStyle(

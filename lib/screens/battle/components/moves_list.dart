@@ -18,10 +18,10 @@ class MovesList extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.only(
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24),
           topRight: Radius.circular(24),
         ),
@@ -29,7 +29,7 @@ class MovesList extends StatelessWidget {
           BoxShadow(
             color: Colors.black.withOpacity(0.1),
             blurRadius: 8,
-            offset: Offset(0, -4),
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -37,8 +37,8 @@ class MovesList extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            margin: EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
               color: Colors.red[700],
               borderRadius: BorderRadius.circular(20),
@@ -46,11 +46,11 @@ class MovesList extends StatelessWidget {
                 BoxShadow(
                   color: Colors.red.shade900.withOpacity(0.3),
                   blurRadius: 8,
-                  offset: Offset(0, 2),
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
-            child: Text(
+            child: const Text(
               'ESCOLHA SEU MOVIMENTO',
               style: TextStyle(
                 color: Colors.white,
@@ -61,18 +61,21 @@ class MovesList extends StatelessWidget {
               ),
             ),
           ),
-          Container(
-            width: MediaQuery.of(context).size.width,
-            padding: EdgeInsets.symmetric(horizontal: 8),
-            child: Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: moves.map((move) => MoveButton(
-                move: move,
-                isDisabled: isDisabled,
-                onMoveSelected: onMoveSelected,
-              )).toList(),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Container(
+              width: MediaQuery.of(context).size.width,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: moves.map((move) => MoveButton(
+                  move: move,
+                  isDisabled: isDisabled,
+                  onMoveSelected: onMoveSelected,
+                )).toList(),
+              ),
             ),
           ),
         ],

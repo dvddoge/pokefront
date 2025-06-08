@@ -30,7 +30,7 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     );
     _animation = CurvedAnimation(
@@ -60,12 +60,12 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
       animation: _animation,
       builder: (context, child) {
         return Container(
-          margin: EdgeInsets.only(bottom: 16),
+          margin: const EdgeInsets.only(bottom: 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -108,7 +108,7 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
                   ],
                 ),
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Container(
                 height: 24,
                 decoration: BoxDecoration(
@@ -118,7 +118,7 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
                       blurRadius: 4,
-                      offset: Offset(0, 2),
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),

@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "D:/WorkSpace/WebDev/LLM Testing/WEB/pokefront/windows/flutter"
+    "cmake.sourceDirectory": "D:/WorkSpace/WebDev/LLM Testing/WEB/pokefront/windows/flutter",
+    "java.configuration.updateBuildConfiguration": "interactive"
 }
