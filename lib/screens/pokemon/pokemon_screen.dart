@@ -976,192 +976,236 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
         backgroundColor: Colors.transparent,
         actions: const [],
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              PokemonSearch(
-                onSearchResults: _handleSearchResults,
-                onError: _handleSearchError,
-                shouldIncludePokemon: _shouldIncludePokemon,
-                isSearching: isSearching,
-                showAdvancedSearch: showAdvancedSearch,
-                onAdvancedSearchToggle: (value) {
-                  setState(() => showAdvancedSearch = value);
-                },
-                searchController: _searchController,
-              ),
-              if (showAdvancedSearch) PokemonFilters(
-                selectedTypes: selectedTypes,
-                selectedGeneration: selectedGeneration,
-                powerRange: powerRange,
-                onTypesChanged: _handleTypesChanged,
-                onGenerationChanged: _handleGenerationChanged,
-                onPowerRangeChanged: _handlePowerRangeChanged,
-                getTypeColor: getTypeColor,
-                showAdvancedSearch: showAdvancedSearch,
-                onAdvancedSearchToggle: (value) {
-                  setState(() => showAdvancedSearch = value);
-                },
-              ),
-              Expanded(
-                child: searchError.isNotEmpty
-                  ? Center(
-                      child: Text(
-                        searchError,
-                        style: TextStyle(
-                          color: Colors.red[700],
-                          fontWeight: FontWeight.bold,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                PokemonSearch(
+                  onSearchResults: _handleSearchResults,
+                  onError: _handleSearchError,
+                  shouldIncludePokemon: _shouldIncludePokemon,
+                  isSearching: isSearching,
+                  showAdvancedSearch: showAdvancedSearch,
+                  onAdvancedSearchToggle: (value) {
+                    setState(() => showAdvancedSearch = value);
+                  },
+                  searchController: _searchController,
+                ),
+                if (showAdvancedSearch) 
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: MediaQuery.of(context).size.height * 0.4,
                         ),
-                      ),
-                    )
-                  : Stack(
-                      children: [
-                        SingleChildScrollView(
-                          controller: _scrollController,
-                          child: Column(
-                            children: [
-                              if (searchResults.isEmpty && !isSearching && isSearchMode)
-                                SubtleNoResults(
-                                  searchQuery: currentSearchQuery,
-                                )
-                              else if (searchResults.isEmpty && !isSearching && (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)))
-                                SubtleNoResults(
-                                  searchQuery: isSearchMode ? currentSearchQuery : 
-                                    'Nenhum Pokémon encontrado com os filtros selecionados:\n${[
-                                      if (selectedTypes.isNotEmpty) 
-                                        'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
-                                      if (selectedGeneration > 0) 
-                                        'Geração: $selectedGeneration',
-                                      if (powerRange != const RangeValues(0, 1000))
-                                        'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
-                                    ].join('\n')}',
-                                )
-                              else if (searchResults.isEmpty && !isSearching)
-                                const Center(
-                                  child: CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                  ),
-                                )
-                              else
-                                AnimationLimiter(
-                                  child: GridView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    padding: const EdgeInsets.all(12),
-                                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                      crossAxisCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
-                                      childAspectRatio: 0.65,
-                                      crossAxisSpacing: 6,
-                                      mainAxisSpacing: 6,
-                                    ),
-                                    itemCount: searchResults.length,
-                                    itemBuilder: (context, index) {
-                                      return buildPokemonCard(searchResults[index]);
-                                    },
-                                  ),
-                                ),
-                            ],
+                        child: SingleChildScrollView(
+                          child: PokemonFilters(
+                            selectedTypes: selectedTypes,
+                            selectedGeneration: selectedGeneration,
+                            powerRange: powerRange,
+                            onTypesChanged: _handleTypesChanged,
+                            onGenerationChanged: _handleGenerationChanged,
+                            onPowerRangeChanged: _handlePowerRangeChanged,
+                            getTypeColor: getTypeColor,
+                            showAdvancedSearch: showAdvancedSearch,
+                            onAdvancedSearchToggle: (value) {
+                              setState(() => showAdvancedSearch = value);
+                            },
                           ),
                         ),
-                        Positioned(
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, -4),
-                                ),
-                              ],
+                      );
+                    },
+                  ),
+                Expanded(
+                  child: searchError.isNotEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            searchError,
+                            style: TextStyle(
+                              color: Colors.red[700],
+                              fontWeight: FontWeight.bold,
                             ),
-                            child: SafeArea(
-                              child: totalPages > 1 ? Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_back_ios),
-                                    onPressed: currentPage > 1
-                                      ? () => _changePage(currentPage - 1)
-                                      : null,
-                                    color: currentPage > 1 ? Colors.red[700] : Colors.grey,
-                                  ),
-                                  if (currentPage > 2)
-                                    _buildPageButton(1),
-                                  if (currentPage > 3)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text('...', style: TextStyle(color: Colors.grey[600])),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          return Stack(
+                            children: [
+                              CustomScrollView(
+                                controller: _scrollController,
+                                slivers: [
+                                  if (searchResults.isEmpty && !isSearching && isSearchMode)
+                                    SliverFillRemaining(
+                                      child: SubtleNoResults(
+                                        searchQuery: currentSearchQuery,
+                                      ),
+                                    )
+                                  else if (searchResults.isEmpty && !isSearching && (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)))
+                                    SliverFillRemaining(
+                                      child: SubtleNoResults(
+                                        searchQuery: isSearchMode ? currentSearchQuery : 
+                                          'Nenhum Pokémon encontrado com os filtros selecionados:\n${[
+                                            if (selectedTypes.isNotEmpty) 
+                                              'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
+                                            if (selectedGeneration > 0) 
+                                              'Geração: $selectedGeneration',
+                                            if (powerRange != const RangeValues(0, 1000))
+                                              'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
+                                          ].join('\n')}',
+                                      ),
+                                    )
+                                  else if (searchResults.isEmpty && !isSearching)
+                                    const SliverFillRemaining(
+                                      child: Center(
+                                        child: CircularProgressIndicator(
+                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    SliverPadding(
+                                      padding: EdgeInsets.only(
+                                        left: 12,
+                                        right: 12,
+                                        top: 12,
+                                        bottom: totalPages > 1 ? 80 : 12,
+                                      ),
+                                      sliver: SliverGrid(
+                                        delegate: SliverChildBuilderDelegate(
+                                          (context, index) {
+                                            return AnimationConfiguration.staggeredGrid(
+                                              position: index,
+                                              duration: const Duration(milliseconds: 375),
+                                              columnCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
+                                              child: ScaleAnimation(
+                                                child: FadeInAnimation(
+                                                  child: buildPokemonCard(searchResults[index]),
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          childCount: searchResults.length,
+                                        ),
+                                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                          crossAxisCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
+                                          childAspectRatio: 0.65,
+                                          crossAxisSpacing: 6,
+                                          mainAxisSpacing: 6,
+                                        ),
+                                      ),
                                     ),
-                                  if (currentPage > 1)
-                                    _buildPageButton(currentPage - 1),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                ],
+                              ),
+                              if (totalPages > 1)
+                                Positioned(
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
                                     decoration: BoxDecoration(
-                                      color: Colors.red[700],
-                                      borderRadius: BorderRadius.circular(20),
+                                      color: Colors.white,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 8,
+                                          offset: const Offset(0, -4),
+                                        ),
+                                      ],
                                     ),
-                                    child: Text(
-                                      currentPage.toString(),
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
+                                    child: SafeArea(
+                                      child: SingleChildScrollView(
+                                        scrollDirection: Axis.horizontal,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.arrow_back_ios),
+                                              onPressed: currentPage > 1
+                                                ? () => _changePage(currentPage - 1)
+                                                : null,
+                                              color: currentPage > 1 ? Colors.red[700] : Colors.grey,
+                                            ),
+                                            if (currentPage > 2)
+                                              _buildPageButton(1),
+                                            if (currentPage > 3)
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                child: Text('...', style: TextStyle(color: Colors.grey[600])),
+                                              ),
+                                            if (currentPage > 1)
+                                              _buildPageButton(currentPage - 1),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                              decoration: BoxDecoration(
+                                                color: Colors.red[700],
+                                                borderRadius: BorderRadius.circular(20),
+                                              ),
+                                              child: Text(
+                                                currentPage.toString(),
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            if (currentPage < totalPages)
+                                              _buildPageButton(currentPage + 1),
+                                            if (currentPage < totalPages - 1)
+                                              Padding(
+                                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                                                child: Text('...', style: TextStyle(color: Colors.grey[600])),
+                                              ),
+                                            if (currentPage < totalPages - 2)
+                                              _buildPageButton(totalPages),
+                                            IconButton(
+                                              icon: const Icon(Icons.arrow_forward_ios),
+                                              onPressed: currentPage < totalPages
+                                                ? () => _changePage(currentPage + 1)
+                                                : null,
+                                              color: currentPage < totalPages ? Colors.red[700] : Colors.grey,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
-                                  if (currentPage < totalPages)
-                                    _buildPageButton(currentPage + 1),
-                                  if (currentPage < totalPages - 1)
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                                      child: Text('...', style: TextStyle(color: Colors.grey[600])),
-                                    ),
-                                  if (currentPage < totalPages - 2)
-                                    _buildPageButton(totalPages),
-                                  IconButton(
-                                    icon: const Icon(Icons.arrow_forward_ios),
-                                    onPressed: currentPage < totalPages
-                                      ? () => _changePage(currentPage + 1)
-                                      : null,
-                                    color: currentPage < totalPages ? Colors.red[700] : Colors.grey,
-                                  ),
-                                ],
-                              ) : const SizedBox.shrink(),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-              ),
-            ],
-          ),
-          if (isSearching)
-            Container(
-              color: Colors.black.withOpacity(0.1),
-              child: const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                ),
+              ],
+            ),
+            if (isSearching)
+              Container(
+                color: Colors.black.withOpacity(0.1),
+                child: const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                  ),
                 ),
               ),
-            ),
-          if (_showClosingTransition)
-            Positioned.fill(
-              child: BattleTransition(
-                phase: TransitionPhase.closing,
-                onMidpoint: _navigateToBattle,
-                onTransitionComplete: () {
-                   if (mounted && _showClosingTransition) {
-                     setState(() => _showClosingTransition = false);
-                   }
-                },
+            if (_showClosingTransition)
+              Positioned.fill(
+                child: BattleTransition(
+                  phase: TransitionPhase.closing,
+                  onMidpoint: _navigateToBattle,
+                  onTransitionComplete: () {
+                     if (mounted && _showClosingTransition) {
+                       setState(() => _showClosingTransition = false);
+                     }
+                  },
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: Column(
         mainAxisSize: MainAxisSize.min,

@@ -26,33 +26,40 @@ class TypeFilter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            'fire', 'water', 'grass', 'electric', 'psychic', 'ice',
-            'dragon', 'dark', 'fairy', 'fighting', 'flying', 'poison',
-            'ground', 'rock', 'bug', 'ghost', 'steel', 'normal'
-          ].map((type) {
-            bool isSelected = selectedTypes[type] ?? false;
-            return FilterChip(
-              selected: isSelected,
-              label: Text(
-                type.toUpperCase(),
-                style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.black87,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-              backgroundColor: Colors.grey[200],
-              selectedColor: getTypeColor(type),
-              onSelected: (bool selected) {
-                final newTypes = Map<String, bool>.from(selectedTypes);
-                newTypes[type] = selected;
-                onTypesChanged(newTypes);
-              },
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                'fire', 'water', 'grass', 'electric', 'psychic', 'ice',
+                'dragon', 'dark', 'fairy', 'fighting', 'flying', 'poison',
+                'ground', 'rock', 'bug', 'ghost', 'steel', 'normal'
+              ].map((type) {
+                bool isSelected = selectedTypes[type] ?? false;
+                return FilterChip(
+                  selected: isSelected,
+                  label: Text(
+                    type.toUpperCase(),
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black87,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                  ),
+                  backgroundColor: Colors.grey[200],
+                  selectedColor: getTypeColor(type),
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onSelected: (bool selected) {
+                    final newTypes = Map<String, bool>.from(selectedTypes);
+                    newTypes[type] = selected;
+                    onTypesChanged(newTypes);
+                  },
+                );
+              }).toList(),
             );
-          }).toList(),
+          },
         ),
       ],
     );
@@ -82,25 +89,32 @@ class GenerationFilter extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: List.generate(8, (index) {
-            final generation = index + 1;
-            return ChoiceChip(
-              selected: selectedGeneration == generation,
-              label: Text(
-                'Gen $generation',
-                style: TextStyle(
-                  color: selectedGeneration == generation ? Colors.white : Colors.black87,
-                ),
-              ),
-              selectedColor: Colors.red[700],
-              onSelected: (bool selected) {
-                onGenerationChanged(selected ? generation : 0);
-              },
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: List.generate(8, (index) {
+                final generation = index + 1;
+                return ChoiceChip(
+                  selected: selectedGeneration == generation,
+                  label: Text(
+                    'Gen $generation',
+                    style: TextStyle(
+                      color: selectedGeneration == generation ? Colors.white : Colors.black87,
+                      fontSize: 12,
+                    ),
+                  ),
+                  selectedColor: Colors.red[700],
+                  visualDensity: VisualDensity.compact,
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  onSelected: (bool selected) {
+                    onGenerationChanged(selected ? generation : 0);
+                  },
+                );
+              }),
             );
-          }),
+          },
         ),
       ],
     );
@@ -160,26 +174,46 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
           ),
         ),
         const SizedBox(height: 8),
-        Row(
-          children: [
-            Text(_currentRange.start.toInt().toString()),
-            Expanded(
-              child: RangeSlider(
-                values: _currentRange,
-                min: 0,
-                max: 1000,
-                divisions: 100,
-                activeColor: Colors.red[700],
-                inactiveColor: Colors.red[100],
-                labels: RangeLabels(
-                  _currentRange.start.round().toString(),
-                  _currentRange.end.round().toString(),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            return Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _currentRange.start.toInt().toString(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                    Text(
+                      _currentRange.end.toInt().toString(),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    ),
+                  ],
                 ),
-                onChanged: _onRangeChanged,
-              ),
-            ),
-            Text(_currentRange.end.toInt().toString()),
-          ],
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                  ),
+                  child: RangeSlider(
+                    values: _currentRange,
+                    min: 0,
+                    max: 1000,
+                    divisions: 100,
+                    activeColor: Colors.red[700],
+                    inactiveColor: Colors.red[100],
+                    labels: RangeLabels(
+                      _currentRange.start.round().toString(),
+                      _currentRange.end.round().toString(),
+                    ),
+                    onChanged: _onRangeChanged,
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
