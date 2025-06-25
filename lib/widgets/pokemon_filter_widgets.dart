@@ -18,17 +18,39 @@ class TypeFilter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Tipos',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Selecione os tipos:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            if (selectedTypes.values.any((v) => v))
+              TextButton(
+                onPressed: () {
+                  final newTypes = <String, bool>{};
+                  for (final type in selectedTypes.keys) {
+                    newTypes[type] = false;
+                  }
+                  onTypesChanged(newTypes);
+                },
+                child: Text(
+                  'Limpar',
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return Wrap(
+        Expanded(
+          child: SingleChildScrollView(
+            child: Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
@@ -44,7 +66,7 @@ class TypeFilter extends StatelessWidget {
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.black87,
                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                   backgroundColor: Colors.grey[200],
@@ -58,8 +80,8 @@ class TypeFilter extends StatelessWidget {
                   },
                 );
               }).toList(),
-            );
-          },
+            ),
+          ),
         ),
       ],
     );
@@ -81,40 +103,58 @@ class GenerationFilter extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Geração',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Escolha a geração:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            if (selectedGeneration > 0)
+              TextButton(
+                onPressed: () => onGenerationChanged(0),
+                child: Text(
+                  'Limpar',
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: List.generate(8, (index) {
-                final generation = index + 1;
-                return ChoiceChip(
-                  selected: selectedGeneration == generation,
-                  label: Text(
-                    'Gen $generation',
-                    style: TextStyle(
-                      color: selectedGeneration == generation ? Colors.white : Colors.black87,
-                      fontSize: 12,
-                    ),
+        Expanded(
+          child: GridView.count(
+            crossAxisCount: 4,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 2.5,
+            children: List.generate(8, (index) {
+              final generation = index + 1;
+              return ChoiceChip(
+                selected: selectedGeneration == generation,
+                label: Text(
+                  'Gen $generation',
+                  style: TextStyle(
+                    color: selectedGeneration == generation ? Colors.white : Colors.black87,
+                    fontSize: 11,
+                    fontWeight: selectedGeneration == generation ? FontWeight.bold : FontWeight.normal,
                   ),
-                  selectedColor: Colors.red[700],
-                  visualDensity: VisualDensity.compact,
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  onSelected: (bool selected) {
-                    onGenerationChanged(selected ? generation : 0);
-                  },
-                );
-              }),
-            );
-          },
+                ),
+                selectedColor: Colors.red[700],
+                backgroundColor: Colors.grey[200],
+                visualDensity: VisualDensity.compact,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onSelected: (bool selected) {
+                  onGenerationChanged(selected ? generation : 0);
+                },
+              );
+            }),
+          ),
         ),
       ],
     );
@@ -165,45 +205,97 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
-        const Text(
-          'Poder Total',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
+        Row(
+          children: [
+            const Text(
+              'Faixa de poder total:',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+            const Spacer(),
+            if (_currentRange != const RangeValues(0, 1000))
+              TextButton(
+                onPressed: () {
+                  setState(() => _currentRange = const RangeValues(0, 1000));
+                  widget.onPowerRangeChanged(const RangeValues(0, 1000));
+                },
+                child: Text(
+                  'Limpar',
+                  style: TextStyle(
+                    color: Colors.red[700],
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+          ],
         ),
-        const SizedBox(height: 8),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            return Column(
+        const SizedBox(height: 4),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      _currentRange.start.toInt().toString(),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.red[700],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        'Min: ${_currentRange.start.toInt()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
-                    Text(
-                      _currentRange.end.toInt().toString(),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: Colors.red[700],
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                      child: Text(
+                        'Max: ${_currentRange.end.toInt()}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
+                const SizedBox(height: 4),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
-                    trackHeight: 4,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    activeTrackColor: Colors.red[700],
+                    inactiveTrackColor: Colors.red[100],
+                    thumbColor: Colors.red[700],
+                    overlayColor: Colors.red[700]?.withOpacity(0.2),
                   ),
                   child: RangeSlider(
                     values: _currentRange,
                     min: 0,
                     max: 1000,
                     divisions: 100,
-                    activeColor: Colors.red[700],
-                    inactiveColor: Colors.red[100],
                     labels: RangeLabels(
                       _currentRange.start.round().toString(),
                       _currentRange.end.round().toString(),
@@ -211,9 +303,28 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
                     onChanged: _onRangeChanged,
                   ),
                 ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      '0',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                    Text(
+                      '1000',
+                      style: TextStyle(
+                        fontSize: 9,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
               ],
-            );
-          },
+            ),
+          ),
         ),
       ],
     );

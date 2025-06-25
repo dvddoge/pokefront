@@ -993,29 +993,21 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   searchController: _searchController,
                 ),
                 if (showAdvancedSearch) 
-                  LayoutBuilder(
-                    builder: (context, constraints) {
-                      return ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: MediaQuery.of(context).size.height * 0.4,
-                        ),
-                        child: SingleChildScrollView(
-                          child: PokemonFilters(
-                            selectedTypes: selectedTypes,
-                            selectedGeneration: selectedGeneration,
-                            powerRange: powerRange,
-                            onTypesChanged: _handleTypesChanged,
-                            onGenerationChanged: _handleGenerationChanged,
-                            onPowerRangeChanged: _handlePowerRangeChanged,
-                            getTypeColor: getTypeColor,
-                            showAdvancedSearch: showAdvancedSearch,
-                            onAdvancedSearchToggle: (value) {
-                              setState(() => showAdvancedSearch = value);
-                            },
-                          ),
-                        ),
-                      );
-                    },
+                  Container(
+                    height: 220,
+                    child: PokemonFilters(
+                      selectedTypes: selectedTypes,
+                      selectedGeneration: selectedGeneration,
+                      powerRange: powerRange,
+                      onTypesChanged: _handleTypesChanged,
+                      onGenerationChanged: _handleGenerationChanged,
+                      onPowerRangeChanged: _handlePowerRangeChanged,
+                      getTypeColor: getTypeColor,
+                      showAdvancedSearch: showAdvancedSearch,
+                      onAdvancedSearchToggle: (value) {
+                        setState(() => showAdvancedSearch = value);
+                      },
+                    ),
                   ),
                 Expanded(
                   child: searchError.isNotEmpty
@@ -1207,85 +1199,91 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           ],
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isComparisonMode || isBattleMode) 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: FloatingActionButton(
-                heroTag: 'cancel_action',
-                mini: true,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: Padding(
+        padding: EdgeInsets.only(
+          bottom: totalPages > 1 ? 70 : 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isComparisonMode || isBattleMode) 
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FloatingActionButton(
+                  heroTag: 'cancel_action',
+                  mini: true,
+                  backgroundColor: Colors.red[700],
+                  elevation: 4,
+                  onPressed: _cancelAction,
+                  child: Icon(Icons.close, color: Colors.white),
+                ),
+              ),
+            if (!isComparisonMode && !isBattleMode) ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FloatingActionButton(
+                  heroTag: 'start_tournament',
+                  backgroundColor: Colors.amber[700],
+                  elevation: 6,
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    if (_selectedPokemonNotifier.value != null) {
+                      _showTournamentConfirmation();
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
+                          backgroundColor: Colors.amber.shade800,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FloatingActionButton(
+                  heroTag: 'start_battle',
+                  backgroundColor: Colors.blue[700],
+                  elevation: 6,
+                  onPressed: _handleBattleMode,
+                  child: Icon(
+                    Icons.catching_pokemon,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+              ),
+              FloatingActionButton(
+                heroTag: 'start_comparison',
                 backgroundColor: Colors.red[700],
-                elevation: 4,
-                onPressed: _cancelAction,
-                child: Icon(Icons.close, color: Colors.white),
-              ),
-            ),
-          if (!isComparisonMode && !isBattleMode) ...[
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: FloatingActionButton(
-                heroTag: 'start_tournament',
-                backgroundColor: Colors.amber[700],
                 elevation: 6,
-                child: const Icon(
-                  Icons.emoji_events,
-                  color: Colors.white,
-                  size: 28,
-                ),
-                onPressed: () {
-                  if (_selectedPokemonNotifier.value != null) {
-                    _showTournamentConfirmation();
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
-                        backgroundColor: Colors.amber.shade800,
-                      ),
-                    );
-                  }
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: FloatingActionButton(
-                heroTag: 'start_battle',
-                backgroundColor: Colors.blue[700],
-                elevation: 6,
-                onPressed: _handleBattleMode,
+                onPressed: _handleComparisonMode,
                 child: Icon(
-                  Icons.catching_pokemon,
+                  Icons.compare,
                   color: Colors.white,
                   size: 28,
                 ),
               ),
-            ),
-            FloatingActionButton(
-              heroTag: 'start_comparison',
-              backgroundColor: Colors.red[700],
-              elevation: 6,
-              onPressed: _handleComparisonMode,
-              child: Icon(
-                Icons.compare,
-                color: Colors.white,
-                size: 28,
+            ] else
+              FloatingActionButton(
+                heroTag: 'action_button',
+                backgroundColor: isBattleMode ? Colors.blue[700] : Colors.red[700],
+                elevation: 6,
+                onPressed: null,
+                child: Icon(
+                  isBattleMode ? Icons.catching_pokemon : Icons.compare,
+                  color: Colors.white,
+                  size: 28,
+                ),
               ),
-            ),
-          ] else
-            FloatingActionButton(
-              heroTag: 'action_button',
-              backgroundColor: isBattleMode ? Colors.blue[700] : Colors.red[700],
-              elevation: 6,
-              onPressed: null,
-              child: Icon(
-                isBattleMode ? Icons.catching_pokemon : Icons.compare,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
       bottomSheet: isComparisonMode ? Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),

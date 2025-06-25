@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../widgets/pokemon_filter_widgets.dart';
 
-class PokemonFilters extends StatelessWidget {
+class PokemonFilters extends StatefulWidget {
   final Map<String, bool> selectedTypes;
   final int selectedGeneration;
   final RangeValues powerRange;
@@ -26,35 +26,137 @@ class PokemonFilters extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _PokemonFiltersState createState() => _PokemonFiltersState();
+}
+
+class _PokemonFiltersState extends State<PokemonFilters> with TickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      child: Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TypeFilter(
-                selectedTypes: selectedTypes,
-                onTypesChanged: onTypesChanged,
-                getTypeColor: getTypeColor,
-              ),
-              const SizedBox(height: 16),
-              GenerationFilter(
-                selectedGeneration: selectedGeneration,
-                onGenerationChanged: onGenerationChanged,
-              ),
-              const SizedBox(height: 16),
-              PowerRangeFilter(
-                powerRange: powerRange,
-                onPowerRangeChanged: onPowerRangeChanged,
-              ),
-            ],
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
-        ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                topRight: Radius.circular(12),
+              ),
+            ),
+            child: TabBar(
+              controller: _tabController,
+              labelColor: Colors.red[700],
+              unselectedLabelColor: Colors.grey[600],
+              indicator: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Colors.red[700]!,
+                    width: 3,
+                  ),
+                ),
+              ),
+              indicatorSize: TabBarIndicatorSize.tab,
+              labelStyle: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 12,
+              ),
+              unselectedLabelStyle: const TextStyle(
+                fontWeight: FontWeight.normal,
+                fontSize: 12,
+              ),
+              tabs: const [
+                Tab(
+                  height: 50,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.category, size: 16),
+                      SizedBox(height: 2),
+                      Text('Tipos'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 50,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.timeline, size: 16),
+                      SizedBox(height: 2),
+                      Text('Geração'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 50,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.trending_up, size: 16),
+                      SizedBox(height: 2),
+                      Text('Poder'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: TypeFilter(
+                    selectedTypes: widget.selectedTypes,
+                    onTypesChanged: widget.onTypesChanged,
+                    getTypeColor: widget.getTypeColor,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: GenerationFilter(
+                    selectedGeneration: widget.selectedGeneration,
+                    onGenerationChanged: widget.onGenerationChanged,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: PowerRangeFilter(
+                    powerRange: widget.powerRange,
+                    onPowerRangeChanged: widget.onPowerRangeChanged,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
