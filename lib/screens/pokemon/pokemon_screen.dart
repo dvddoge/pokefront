@@ -22,6 +22,7 @@ import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
 import '../tournament/tournament_screen.dart';
+import '../achievements_screen.dart';
 
 class PokemonScreen extends StatefulWidget {
   const PokemonScreen({super.key});
@@ -1223,11 +1224,32 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: FloatingActionButton(
+                  heroTag: 'achievements',
+                  backgroundColor: Colors.purple[700],
+                  elevation: 6,
+                  child: const Icon(
+                    Icons.emoji_events,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AchievementsScreen(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: FloatingActionButton(
                   heroTag: 'start_tournament',
                   backgroundColor: Colors.amber[700],
                   elevation: 6,
                   child: const Icon(
-                    Icons.emoji_events,
+                    Icons.military_tech,
                     color: Colors.white,
                     size: 28,
                   ),
