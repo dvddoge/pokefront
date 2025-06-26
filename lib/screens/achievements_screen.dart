@@ -27,13 +27,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
     super.dispose();
   }
 
-  void _loadRewards() {
+  void _loadRewards() async {
     allRewards = TournamentService.getAllRewards();
-    // Simular algumas conquistas desbloqueadas para demonstração
-    unlockedRewards = allRewards.take(2).map((reward) => 
-      reward.copyWith(isUnlocked: true, unlockedAt: DateTime.now())
-    ).toList();
-    setState(() {});
+    // Carrega conquistas reais desbloqueadas
+    unlockedRewards = await TournamentService.loadUnlockedAchievements();
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override

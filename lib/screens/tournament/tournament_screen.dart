@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -8,6 +9,8 @@ import '../../models/tournament_progress.dart';
 import '../../models/tournament_reward.dart';
 import '../../services/tournament_service.dart';
 import '../battle/pokemon_battle_screen.dart';
+import 'components/tournament_bracket.dart';
+import 'components/victory_particles.dart';
 
 class TournamentScreen extends StatefulWidget {
   final Pokemon playerPokemon;
@@ -22,7 +25,11 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
   final List<Opponent> opponents = TournamentService.getTournamentOpponents();
   late TournamentProgress progress;
   late AnimationController _progressAnimationController;
+  late AnimationController _headerAnimationController;
+  late AnimationController _bracketAnimationController;
   bool isBattling = false;
+  bool showVictoryParticles = false;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -36,11 +43,42 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
+    
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    
+    _bracketAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+    
+    _startTimer();
+    
+    // Inicia animações
+    _headerAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) _bracketAnimationController.forward();
+    });
+  }
+
+  void _startTimer() {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted && !progress.isCompleted) {
+        setState(() {
+          // Força rebuild para atualizar o tempo
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _progressAnimationController.dispose();
+    _headerAnimationController.dispose();
+    _bracketAnimationController.dispose();
     super.dispose();
   }
 
@@ -86,6 +124,14 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
           playerWon: true,
         );
 
+        // Atualiza estatísticas da batalha
+        await TournamentService.updatePlayerStats(
+          tournamentCompleted: false,
+          battleWon: true,
+          tournamentTime: battleDuration,
+          tournamentScore: battleScore,
+        );
+
         setState(() {
           progress = progress.copyWith(
             currentOpponentIndex: progress.currentOpponentIndex + 1,
@@ -100,6 +146,22 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
         });
 
         _progressAnimationController.forward();
+        
+        // Ativa partículas de vitória
+        setState(() {
+          showVictoryParticles = true;
+        });
+        
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) {
+            setState(() {
+              showVictoryParticles = false;
+            });
+          }
+        });
+        
+        // Verifica conquistas desbloqueadas
+        _checkAndShowAchievements();
         
         // Mostra pontuação da batalha
         _showBattleScoreDialog(battleScore, opponent.name);
@@ -124,7 +186,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
     }
   }
 
-  void _completeTournament() {
+  void _completeTournament() async {
     final endTime = DateTime.now();
     final earnedMedal = TournamentService.calculateMedal(
       totalScore: progress.currentScore,
@@ -140,13 +202,19 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       );
     });
 
-    // Calcula recompensas
-    final stats = TournamentStats(
-      battlesWon: progress.battleScores.length,
-      tournamentsWon: 1,
+    // Atualiza estatísticas do jogador
+    await TournamentService.updatePlayerStats(
+      tournamentCompleted: true,
+      battleWon: true,
+      tournamentTime: progress.totalTime,
+      tournamentScore: progress.currentScore,
     );
+
+    // Carrega estatísticas atualizadas
+    final stats = await TournamentService.loadPlayerStats();
     
-    final earnedRewards = TournamentService.calculateEarnedRewards(
+    // Calcula recompensas
+    final earnedRewards = await TournamentService.calculateEarnedRewards(
       progress: progress,
       stats: stats,
     );
@@ -162,35 +230,33 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
           children: [
             Icon(Icons.stars, color: Colors.amber[700]),
             const SizedBox(width: 8),
-            const Text('Batalha Vencida!'),
+            const Text('Vitória!'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Você derrotou $opponentName!'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.amber[50],
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.amber[200]!),
               ),
-              child: Column(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(Icons.emoji_events, color: Colors.amber[700]),
+                  const SizedBox(width: 8),
                   Text(
                     '+$score pontos',
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.amber[800],
+                      color: Colors.amber[700],
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Pontuação Total: ${progress.currentScore}',
-                    style: TextStyle(color: Colors.grey[600]),
                   ),
                 ],
               ),
@@ -198,11 +264,95 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
           ],
         ),
         actions: [
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Continuar'),
           ),
         ],
+      ),
+    );
+  }
+
+  // Função para verificar e exibir conquistas em tempo real
+  void _checkAndShowAchievements() async {
+    final stats = await TournamentService.loadPlayerStats();
+    
+    // Verifica se há novas conquistas baseadas no progresso atual
+    final tempProgress = progress.copyWith(isCompleted: false); // Para não calcular medalhas ainda
+    final newAchievements = await TournamentService.calculateEarnedRewards(
+      progress: tempProgress,
+      stats: stats,
+    );
+    
+    // Mostra conquistas desbloqueadas
+    if (newAchievements.isNotEmpty && mounted) {
+      for (final achievement in newAchievements) {
+        _showAchievementUnlocked(achievement);
+        // Pequeno delay entre conquistas
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+  }
+
+  void _showAchievementUnlocked(TournamentReward achievement) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.amber[700],
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Icon(
+                  Icons.emoji_events,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '🏆 Conquista Desbloqueada!',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    Text(
+                      achievement.name,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                    if (achievement.pointsValue > 0)
+                      Text(
+                        '+${achievement.pointsValue} pontos',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.amber[200],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: Colors.green[700],
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
       ),
     );
   }
@@ -372,221 +522,209 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Torneio dos Campeões'),
+        title: AnimatedBuilder(
+          animation: _headerAnimationController,
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, 20 * (1 - _headerAnimationController.value)),
+              child: Opacity(
+                opacity: _headerAnimationController.value,
+                child: const Text('Torneio dos Campeões'),
+              ),
+            );
+          },
+        ),
         backgroundColor: Colors.amber[800],
         elevation: 0,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.amber.shade100, Colors.deepOrange.shade100],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.amber[700]!, Colors.amber[900]!],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
           ),
         ),
-        child: Column(
-          children: [
-            // Header com progresso
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Pontuação',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          Text(
-                            '${progress.currentScore}',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.amber,
-                            ),
-                          ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text(
-                            'Tempo',
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          Text(
-                            '${progress.totalTime.inMinutes}:${(progress.totalTime.inSeconds % 60).toString().padLeft(2, '0')}',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  // Barra de progresso
-                  Row(
-                    children: [
-                      Text('Progresso: ${progress.currentOpponentIndex}/${opponents.length}'),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: LinearProgressIndicator(
-                          value: progress.currentOpponentIndex / opponents.length,
-                          backgroundColor: Colors.grey[300],
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.amber[700]!),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-            
-            // Lista de oponentes
-            Expanded(
-              child: ListView.builder(
-                itemCount: opponents.length,
-                itemBuilder: (context, index) {
-                  final opponent = opponents[index];
-                  final isDefeated = index < progress.currentOpponentIndex;
-                  final isCurrent = index == progress.currentOpponentIndex && !progress.isCompleted;
-
-                  return _buildOpponentCard(opponent, isDefeated, isCurrent, index);
-                },
-              ),
-            ),
-          ],
-        ),
       ),
-    );
-  }
-
-  Widget _buildOpponentCard(Opponent opponent, bool isDefeated, bool isCurrent, int index) {
-    final battleScore = index < progress.battleScores.length ? progress.battleScores[index] : 0;
-    
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      elevation: isCurrent ? 8 : 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: isCurrent 
-          ? BorderSide(color: Colors.amber.shade800, width: 3)
-          : BorderSide.none,
-      ),
-      child: Stack(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.amber.shade50, Colors.deepOrange.shade50],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Column(
               children: [
-                CircleAvatar(
-                  radius: 40,
-                  backgroundImage: CachedNetworkImageProvider(opponent.avatarUrl),
-                  backgroundColor: Colors.grey.shade200,
+                // Header com progresso animado
+                AnimatedBuilder(
+                  animation: _headerAnimationController,
+                  builder: (context, child) {
+                    return Transform.translate(
+                      offset: Offset(0, -50 * (1 - _headerAnimationController.value)),
+                      child: Opacity(
+                        opacity: _headerAnimationController.value,
+                        child: _buildProgressHeader(),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 16),
+                
+                // Bracket visual com scroll horizontal
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        opponent.name,
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        opponent.title,
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                      if (isDefeated) ...[
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.green[100],
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            '+$battleScore pontos',
-                            style: TextStyle(
-                              color: Colors.green[700],
-                              fontWeight: FontWeight.bold,
-                              fontSize: 12,
+                  child: AnimatedBuilder(
+                    animation: _bracketAnimationController,
+                    builder: (context, child) {
+                      return Transform.scale(
+                        scale: 0.5 + (_bracketAnimationController.value * 0.5),
+                        child: Opacity(
+                          opacity: _bracketAnimationController.value,
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: TournamentBracket(
+                              opponents: opponents,
+                              playerPokemon: widget.playerPokemon,
+                              progress: progress,
+                              onPlayerTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('Seu Pokémon: ${widget.playerPokemon.name}'),
+                                    backgroundColor: Colors.blue[700],
+                                  ),
+                                );
+                              },
+                              onOpponentTap: _startBattle,
+                              isBattling: isBattling,
                             ),
                           ),
                         ),
-                      ],
-                      const SizedBox(height: 8),
-                      if (isCurrent)
-                        ElevatedButton.icon(
-                          onPressed: isBattling ? null : () => _startBattle(opponent),
-                          icon: isBattling 
-                              ? const SizedBox(
-                                  width: 16, 
-                                  height: 16, 
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Icon(Icons.sports_kabaddi),
-                          label: Text(isBattling ? 'Carregando...' : 'Lutar Agora!'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red.shade700,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                          ),
-                        ),
-                    ],
+                      );
+                    },
                   ),
                 ),
               ],
             ),
           ),
-          if (isDefeated)
+          
+          // Partículas de vitória
+          if (showVictoryParticles)
             Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Icon(
-                      Icons.check_circle,
-                      color: Colors.green,
-                      size: 32,
-                    ),
-                  ),
+              child: IgnorePointer(
+                child: VictoryParticles(
+                  isActive: showVictoryParticles,
                 ),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildProgressHeader() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildStatCard(
+                'Pontuação',
+                '${progress.currentScore}',
+                Colors.amber,
+                Icons.stars,
+              ),
+              _buildStatCard(
+                'Tempo',
+                '${progress.totalTime.inMinutes}:${(progress.totalTime.inSeconds % 60).toString().padLeft(2, '0')}',
+                Colors.blue,
+                Icons.timer,
+              ),
+              _buildStatCard(
+                'Progresso',
+                '${progress.currentOpponentIndex}/${opponents.length}',
+                Colors.green,
+                Icons.trending_up,
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Barra de progresso animada
+          Container(
+            height: 8,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: Colors.grey[200],
+            ),
+            child: AnimatedBuilder(
+              animation: _progressAnimationController,
+              builder: (context, child) {
+                return FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: (progress.currentOpponentIndex / opponents.length) * 
+                              _progressAnimationController.value,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      gradient: LinearGradient(
+                        colors: [Colors.amber[600]!, Colors.amber[800]!],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(String label, String value, Color color, IconData icon) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: color, size: 24),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 } 
