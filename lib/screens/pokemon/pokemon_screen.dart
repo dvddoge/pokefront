@@ -23,6 +23,7 @@ import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
 import '../tournament/tournament_screen.dart';
 import '../achievements_screen.dart';
+import '../../widgets/fan_menu.dart';
 
 class PokemonScreen extends StatefulWidget {
   const PokemonScreen({super.key});
@@ -897,9 +898,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
+    return SafeArea(
+      child: Stack(
+        children: [
+        Scaffold(
+          backgroundColor: Colors.grey[100],
+          appBar: AppBar(
         title: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -1200,113 +1204,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           ],
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      floatingActionButton: Padding(
-        padding: EdgeInsets.only(
-          bottom: totalPages > 1 ? 70 : 16,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (isComparisonMode || isBattleMode) 
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FloatingActionButton(
-                  heroTag: 'cancel_action',
-                  mini: true,
-                  backgroundColor: Colors.red[700],
-                  elevation: 4,
-                  onPressed: _cancelAction,
-                  child: Icon(Icons.close, color: Colors.white),
-                ),
-              ),
-            if (!isComparisonMode && !isBattleMode) ...[
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FloatingActionButton(
-                  heroTag: 'achievements',
-                  backgroundColor: Colors.purple[700],
-                  elevation: 6,
-                  child: const Icon(
-                    Icons.emoji_events,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AchievementsScreen(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FloatingActionButton(
-                  heroTag: 'start_tournament',
-                  backgroundColor: Colors.amber[700],
-                  elevation: 6,
-                  child: const Icon(
-                    Icons.military_tech,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                  onPressed: () {
-                    if (_selectedPokemonNotifier.value != null) {
-                      _showTournamentConfirmation();
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
-                          backgroundColor: Colors.amber.shade800,
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: FloatingActionButton(
-                  heroTag: 'start_battle',
-                  backgroundColor: Colors.blue[700],
-                  elevation: 6,
-                  onPressed: _handleBattleMode,
-                  child: Icon(
-                    Icons.catching_pokemon,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-              ),
-              FloatingActionButton(
-                heroTag: 'start_comparison',
-                backgroundColor: Colors.red[700],
-                elevation: 6,
-                onPressed: _handleComparisonMode,
-                child: Icon(
-                  Icons.compare,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-            ] else
-              FloatingActionButton(
-                heroTag: 'action_button',
-                backgroundColor: isBattleMode ? Colors.blue[700] : Colors.red[700],
-                elevation: 6,
-                onPressed: null,
-                child: Icon(
-                  isBattleMode ? Icons.catching_pokemon : Icons.compare,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-          ],
-        ),
-      ),
+      floatingActionButton: null,
       bottomSheet: isComparisonMode ? Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         color: Colors.red[700]?.withOpacity(0.9),
@@ -1346,6 +1244,71 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           ),
         ),
       ) : null,
+        ),
+        // FanMenu posicionado no canto inferior direito
+        Positioned(
+          bottom: totalPages > 1 ? -30 : -20,
+          right: -100,
+          child: isComparisonMode || isBattleMode 
+            ? FloatingActionButton(
+                heroTag: 'cancel_action',
+                mini: true,
+                backgroundColor: Colors.red[700],
+                elevation: 4,
+                onPressed: _cancelAction,
+                child: Icon(Icons.close, color: Colors.white),
+              )
+            : FanMenu(
+                toggleIcon: Icons.menu,
+                toggleColor: Colors.deepPurple[600]!,
+                items: [
+                  FanMenuItem(
+                    icon: Icons.military_tech,
+                    color: Colors.purple[700]!,
+                    tooltip: 'Conquistas',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AchievementsScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  FanMenuItem(
+                    icon: Icons.emoji_events,
+                    color: Colors.amber[700]!,
+                    tooltip: 'Iniciar Torneio',
+                    onTap: () {
+                      if (_selectedPokemonNotifier.value != null) {
+                        _showTournamentConfirmation();
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
+                            backgroundColor: Colors.amber.shade800,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  FanMenuItem(
+                    icon: Icons.catching_pokemon,
+                    color: Colors.blue[700]!,
+                    tooltip: 'Batalha',
+                    onTap: _handleBattleMode,
+                  ),
+                  FanMenuItem(
+                    icon: Icons.compare,
+                    color: Colors.red[700]!,
+                    tooltip: 'Comparar',
+                    onTap: _handleComparisonMode,
+                  ),
+                ],
+              ),
+        ),
+      ],
+      ),
     );
   }
 
