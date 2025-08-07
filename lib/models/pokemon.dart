@@ -115,4 +115,38 @@ class Pokemon {
       speed: speed ?? this.speed,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'imageUrl': imageUrl,
+      'types': types,
+      'level': level,
+      'hp': hp,
+      'maxHp': maxHp,
+      'attack': attack,
+      'defense': defense,
+      'specialAttack': specialAttack,
+      'specialDefense': specialDefense,
+      'speed': speed,
+    };
+  }
+
+  factory Pokemon.fromJsonCache(Map<String, dynamic> json) {
+    return Pokemon(
+      id: json['id'],
+      name: json['name'],
+      imageUrl: json['imageUrl'],
+      types: List<String>.from(json['types']),
+      level: json['level'] ?? 50,
+      hp: json['hp']?.toDouble() ?? 100.0,
+      maxHp: json['maxHp']?.toDouble() ?? 100.0,
+      attack: json['attack'] ?? 50,
+      defense: json['defense'] ?? 50,
+      specialAttack: json['specialAttack'] ?? 50,
+      specialDefense: json['specialDefense'] ?? 50,
+      speed: json['speed'] ?? 50,
+    );
+  }
 }

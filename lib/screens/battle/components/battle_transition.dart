@@ -43,7 +43,7 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
     );
 
     _spinController = AnimationController(
-      duration: const Duration(seconds: 2), // 2s de giro
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
@@ -102,12 +102,11 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
      if (_disposed) return;
      try {
        print('Fechando cortinas (Heavy Door Effect)...');
-       // Usar animateTo com curva easeInQuint para fechamento pesado
-       await _curtainController.animateTo(
+        await _curtainController.animateTo(
            1.0,
-           duration: _curtainController.duration, // Usar a duração definida no controller
-           curve: Curves.easeInQuint
-       ).orCancel;
+           duration: const Duration(milliseconds: 900),
+           curve: Curves.easeInCubic
+        ).orCancel;
        if (_disposed) return;
        print('Cortinas fechadas, chamando onMidpoint...');
        if (widget.phase != TransitionPhase.opening) {
@@ -144,11 +143,10 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
     if (_disposed) return;
     try {
       print('Abrindo cortinas (Heavy Door Effect)...');
-      // Usar animateTo (voltando para 0.0) com curva easeOutExpo para abertura rápida inicial
       await _curtainController.animateTo(
           0.0,
-          duration: _curtainController.duration, // Usar a duração definida no controller
-          curve: Curves.easeOutExpo
+          duration: const Duration(milliseconds: 750),
+          curve: Curves.easeOutCubic
       ).orCancel;
     } on TickerCanceled {
       print('Animação de abrir cortinas cancelada.');
@@ -196,6 +194,8 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
     final pokeballPositionY = screenHeight / 2 - (pokeballSize / 2);
 
     final pokeballSpinAngle = _spinController.value * 4 * math.pi; // Multiplicador para mais giros
+    final pokeballScale = 1.0 + 0.06 * math.sin(_spinController.value * 2 * math.pi);
+    final isOpeningMotion = _curtainController.status == AnimationStatus.reverse || widget.phase == TransitionPhase.opening;
 
     // Use IgnorePointer para prevenir interações com a UI por baixo durante a transição
     return IgnorePointer(
@@ -203,15 +203,22 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
       ignoring: widget.phase != TransitionPhase.opening || _curtainController.isAnimating || _spinController.isAnimating,
       child: Stack(
         children: [
-           // Camada semi-transparente (opcional, pode remover se não gostar)
-           // Container(color: Colors.black.withOpacity(curtainProgress * 0.3)),
+           Container(color: Colors.black.withOpacity(curtainProgress * 0.35)),
 
            Positioned(
             left: 0,
             top: 0,
             bottom: 0,
             width: leftCurtainWidth,
-            child: Container(color: Colors.black),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [Color(0xFF0A0A0A), Color(0xFF000000)],
+                ),
+              ),
+            ),
           ),
 
           Positioned(
@@ -219,17 +226,96 @@ class _BattleTransitionState extends State<BattleTransition> with TickerProvider
             top: 0,
             bottom: 0,
             right: 0,
-            child: Container(color: Colors.black),
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.centerRight,
+                  end: Alignment.centerLeft,
+                  colors: [Color(0xFF0A0A0A), Color(0xFF000000)],
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            left: leftCurtainWidth - 2,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            child: Opacity(
+              opacity: (curtainProgress * curtainProgress).clamp(0.0, 1.0),
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [Color(0x66000000), Color(0x22FFFFFF)],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          Positioned(
+            left: rightCurtainLeft,
+            top: 0,
+            bottom: 0,
+            width: 4,
+            child: Opacity(
+              opacity: (curtainProgress * curtainProgress).clamp(0.0, 1.0),
+              child: const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerRight,
+                    end: Alignment.centerLeft,
+                    colors: [Color(0x66000000), Color(0x22FFFFFF)],
+                  ),
+                ),
+              ),
+            ),
           ),
 
           // Só mostra a pokebola se as cortinas estiverem se movendo ou fechadas
+          if (curtainProgress > 0.01 || _spinController.isAnimating || widget.phase == TransitionPhase.opening)
+            ...List.generate(6, (i) {
+              final idx = i + 1;
+              final t = idx / 6.0;
+              final dx = (isOpeningMotion ? -1 : 1) * idx * (pokeballSize * 0.35);
+              final size = pokeballSize * (1 - 0.08 * idx);
+              final opacity = (0.22 * (1 - t)).clamp(0.0, 1.0);
+              return Positioned(
+                left: pokeballPositionX + dx + (pokeballSize - size) / 2,
+                top: pokeballPositionY + (pokeballSize - size) / 2,
+                child: Opacity(
+                  opacity: opacity,
+                  child: Container(
+                    width: size,
+                    height: size,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF3B30).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x44FF3B30),
+                          blurRadius: 18,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
           if (curtainProgress > 0.01 || _spinController.isAnimating || widget.phase == TransitionPhase.opening)
             Positioned(
               left: pokeballPositionX,
               top: pokeballPositionY,
               child: Transform.rotate(
                 angle: pokeballSpinAngle,
-                child: _buildPokeball(),
+                child: Transform.scale(
+                  scale: pokeballScale,
+                  child: _buildPokeball(),
+                ),
               ),
             ),
         ],

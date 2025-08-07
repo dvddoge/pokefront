@@ -123,6 +123,7 @@ class _PokemonGridState extends State<PokemonGrid> {
         ? '${widget.selectedTypes.toString()}_${widget.selectedGeneration}_${widget.powerRange.toString()}_page_${widget.currentPage}'
         : 'page_${widget.currentPage}';
 
+      // Verificar cache primeiro
       if (_cache.containsKey(cacheKey)) {
         _safeSetState(() {
           _currentPokemons = List<Pokemon>.from(_cache[cacheKey]!);
@@ -130,6 +131,14 @@ class _PokemonGridState extends State<PokemonGrid> {
         });
         widget.onPokemonsLoaded(_currentPokemons);
         return;
+      }
+
+      // Verificar se precisa limpar cache antigo para economizar memória
+      if (_cache.length > 10) {
+        final oldKeys = _cache.keys.take(_cache.length - 10).toList();
+        for (final key in oldKeys) {
+          _cache.remove(key);
+        }
       }
 
       final pokemonService = PokemonListService();
@@ -157,6 +166,7 @@ class _PokemonGridState extends State<PokemonGrid> {
         _safeSetState(() => _isLoading = false);
       }
     } catch (e) {
+      print('Erro ao buscar Pokémon: $e');
       if (!_disposed) {
         _safeSetState(() => _isLoading = false);
       }
@@ -275,27 +285,96 @@ class _PokemonGridState extends State<PokemonGrid> {
                         height: imageHeight,
                         alignment: Alignment.center,
                         padding: const EdgeInsets.all(8),
-                        child: Hero(
-                          tag: 'pokemon-${pokemon.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: pokemon.imageUrl,
-                            height: imageHeight,
-                            memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
-                            fit: BoxFit.contain,
-                            placeholder: (context, url) => const Center(
-                              child: CircularProgressIndicator(
-                                valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                strokeWidth: 2.0,
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            Hero(
+                              tag: 'pokemon-${pokemon.id}',
+                              child: CachedNetworkImage(
+                                imageUrl: pokemon.imageUrl,
+                                height: imageHeight,
+                                memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
+                                fit: BoxFit.contain,
+                                placeholder: (context, url) => Center(
+                                  child: AnimatedBuilder(
+                                    animation: widget.loadingAnimationController,
+                                    builder: (context, child) {
+                                      return Transform.rotate(
+                                        angle: widget.loadingAnimationController.value * 2 * math.pi,
+                                        child: CustomPaint(
+                                          size: Size(imageHeight * 0.4, imageHeight * 0.4),
+                                          painter: PokeballPainter(
+                                            color: Colors.red[300]!,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                errorWidget: (context, url, error) => Center(
+                                  child: Icon(
+                                    Icons.error_outline,
+                                    color: Colors.grey[400],
+                                    size: imageHeight * 0.5,
+                                  ),
+                                ),
                               ),
                             ),
-                            errorWidget: (context, url, error) => Center(
-                              child: Icon(
-                                Icons.error_outline,
-                                color: Colors.grey[400],
-                                size: imageHeight * 0.5,
+                            // Pokébola central grande e transparente
+                            Center(
+                              child: AnimatedBuilder(
+                                animation: widget.loadingAnimationController,
+                                builder: (context, child) {
+                                  return Transform.rotate(
+                                    angle: widget.loadingAnimationController.value * -1.5 * math.pi, // Gira no sentido contrário
+                                    child: Opacity(
+                                      opacity: 0.15,
+                                      child: CustomPaint(
+                                        size: Size(imageHeight * 0.6, imageHeight * 0.6),
+                                        painter: PokeballPainter(
+                                          color: Colors.red[700]!,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
                               ),
                             ),
-                          ),
+                            // Pokébola sempre girando sobreposta à imagem
+                            Positioned(
+                              bottom: 4,
+                              left: 4,
+                              child: Container(
+                                width: 20,
+                                height: 20,
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.85),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.15),
+                                      blurRadius: 3,
+                                      offset: const Offset(0, 1),
+                                    ),
+                                  ],
+                                ),
+                                child: AnimatedBuilder(
+                                  animation: widget.loadingAnimationController,
+                                  builder: (context, child) {
+                                    return Transform.rotate(
+                                      angle: widget.loadingAnimationController.value * 2 * math.pi,
+                                      child: CustomPaint(
+                                        size: const Size(16, 16),
+                                        painter: PokeballPainter(
+                                          color: Colors.red[600]!,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                       Expanded(
@@ -363,6 +442,40 @@ class _PokemonGridState extends State<PokemonGrid> {
                         fontWeight: FontWeight.bold,
                         color: Colors.white.withOpacity(0.6),
                         fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  // Pokébola sempre girando no canto superior direito
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.9),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: AnimatedBuilder(
+                        animation: widget.loadingAnimationController,
+                        builder: (context, child) {
+                          return Transform.rotate(
+                            angle: widget.loadingAnimationController.value * 2 * math.pi,
+                            child: CustomPaint(
+                              size: const Size(18, 18),
+                              painter: PokeballPainter(
+                                color: Colors.red[500]!,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),

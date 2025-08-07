@@ -21,8 +21,10 @@ import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
+import '../../services/pokemon_cache_service.dart';
 import '../tournament/tournament_screen.dart';
 import '../achievements_screen.dart';
+import '../settings_screen.dart';
 import '../../widgets/fan_menu.dart';
 
 class PokemonScreen extends StatefulWidget {
@@ -85,6 +87,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void initState() {
     super.initState();
     _setupAnimationControllers();
+    
+    // Registrar a instância do service no cache para limpeza
+    PokemonCacheService.setPokemonListService(_pokemonListService);
+    
     _loadInitialPokemonList();
     _selectedPokemonNotifier.addListener(_handlePokemonSelectionChange);
     _comparisonModeNotifier.addListener(_handleComparisonModeChange);
@@ -127,7 +133,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     _loadingAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 2000), // Mais lento para ser mais visível
     )..repeat();
   }
 
@@ -1303,6 +1309,19 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                     color: Colors.red[700]!,
                     tooltip: 'Comparar',
                     onTap: _handleComparisonMode,
+                  ),
+                  FanMenuItem(
+                    icon: Icons.settings,
+                    color: Colors.green[700]!,
+                    tooltip: 'Configurações',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const SettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

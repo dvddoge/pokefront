@@ -3,7 +3,8 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 import '../models/pokemon.dart';
-import 'pokemon_filter_service.dart'; // Importar o serviço de filtro
+import 'pokemon_filter_service.dart';
+import 'pokemon_cache_service.dart';
 
 class PokemonListService {
   static const int pageSize = 20;
@@ -11,20 +12,29 @@ class PokemonListService {
   final Map<int, Pokemon> _pokemonCache = {};
   final Map<String, List<Pokemon>> _searchCache = {};
 
+  // Método para limpar todos os caches
+  void clearAllCaches() {
+    _statsCache.clear();
+    _pokemonCache.clear();
+    _searchCache.clear();
+    print('Cache legado limpo: ${_pokemonCache.length} Pokémon, ${_statsCache.length} stats, ${_searchCache.length} buscas');
+  }
+
+  // Getter para estatísticas do cache legado
+  Map<String, int> getLegacyCacheStats() {
+    return {
+      'pokemon_count': _pokemonCache.length,
+      'stats_count': _statsCache.length,
+      'search_count': _searchCache.length,
+    };
+  }
+
   Future<Map<String, dynamic>> fetchPokemonList({
     int page = 1,
     Map<String, bool>? selectedTypes,
     int? selectedGeneration,
     RangeValues? powerRange,
   }) async {
-    // Limpar o cache de Pokémon antes de buscar uma nova página para economizar memória
-    // Considerar uma estratégia de cache mais sofisticada (LRU) se a performance for impactada
-    // if (page > 1) { // Manter a limpeza de cache, se desejado
-    //    _pokemonCache.removeWhere((key, value) => !_isPokemonOnPage(key, page, pageSize));
-    //    print("Cache de Pokémon limpo para otimizar memória.");
-    // }
-
-    List<Pokemon> allFetchedPokemons = [];
     int offset = (page - 1) * pageSize;
     
     // Verificar se há filtros ativos
@@ -32,8 +42,32 @@ class PokemonListService {
                            (selectedGeneration != null && selectedGeneration > 0) ||
                            (powerRange != null && powerRange != const RangeValues(0, 1000));
     
+    // Verificar se há filtro de poder ativo
+    bool hasPowerFilter = powerRange != null && powerRange != const RangeValues(0, 1000);
+    
     try {
-      // Sempre busca a lista base de nomes/URLs (até 1000)
+      // Inicializar cache inteligente
+      await PokemonCacheService.initialize();
+      
+      // Primeira tentativa: buscar resultados filtrados do cache inteligente
+      if (hasActiveFilters) {
+        final cachedResults = await _tryGetFilteredFromCache(
+          selectedTypes: selectedTypes,
+          selectedGeneration: selectedGeneration,
+          powerRange: powerRange,
+          page: page,
+        );
+        
+        if (cachedResults.isNotEmpty) {
+          print('Usando resultados filtrados do cache para página $page');
+          return {
+            'pokemons': cachedResults,
+            'total': await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange),
+          };
+        }
+      }
+
+      // Buscar lista base de nomes/URLs
       final response = await http.get(
         Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0'),
       ).timeout(const Duration(seconds: 15));
@@ -52,13 +86,25 @@ class PokemonListService {
         return {'pokemons': _getDefaultPokemons(), 'total': 10};
       }
 
-      print('Encontrados ${results.length} Pokémon na API');
-
       List<Map<String, dynamic>> resultsToFetchDetails;
+      
       if (hasActiveFilters) {
-        // Se houver filtros, precisamos potencialmente buscar detalhes de TODOS para filtrar
-        resultsToFetchDetails = List<Map<String, dynamic>>.from(results);
-        print('Filtros ativos. Preparando para buscar detalhes de até ${resultsToFetchDetails.length} Pokémon.');
+        // OTIMIZAÇÃO: Aplicar filtros básicos ANTES de buscar detalhes
+        resultsToFetchDetails = await _preFilterResults(
+          results, 
+          selectedTypes, 
+          selectedGeneration, 
+          powerRange
+        );
+        
+        // Aplicar paginação nos resultados pré-filtrados
+        final startIndex = offset;
+        final endIndex = startIndex + pageSize;
+        resultsToFetchDetails = resultsToFetchDetails.length > startIndex 
+            ? resultsToFetchDetails.sublist(startIndex, endIndex > resultsToFetchDetails.length ? resultsToFetchDetails.length : endIndex)
+            : [];
+            
+        print('Filtros aplicados. Buscando detalhes de ${resultsToFetchDetails.length} Pokémon para página $page');
       } else {
         // Sem filtros, busca detalhes apenas para a página atual
         final int startIndex = offset;
@@ -66,119 +112,230 @@ class PokemonListService {
         resultsToFetchDetails = results.length > startIndex 
             ? List<Map<String, dynamic>>.from(results.sublist(startIndex, endIndex > results.length ? results.length : endIndex)) 
             : [];
-        print('Sem filtros. Preparando para buscar detalhes de ${resultsToFetchDetails.length} Pokémon para a página $page.');
       }
       
-      if (resultsToFetchDetails.isEmpty && !hasActiveFilters) {
-        print('Nenhum resultado para a página $page (sem filtros)');
-        // Se não há filtros e a página está além do limite, retorna vazio com o total da API
-        return {'pokemons': [], 'total': totalApiPokemons};
-      } else if (resultsToFetchDetails.isEmpty && hasActiveFilters) {
-          print('Nenhum Pokémon encontrado na lista base da API para buscar detalhes com filtros.');
-          return {'pokemons': [], 'total': 0};
+      if (resultsToFetchDetails.isEmpty) {
+        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
       }
       
-      // Fazer todas as requisições de detalhes necessárias em paralelo
-      final futures = resultsToFetchDetails.map((pokemon) async {
-        try {
-          final pokemonUrl = pokemon['url'] as String;
-          final pokemonId = int.parse(pokemonUrl.split('/')[6]);
-
-          // Prioriza o cache
-          if (_pokemonCache.containsKey(pokemonId)) {
-             // print('Usando Pokémon em cache: ${pokemon['name']} (ID: $pokemonId)');
-            return _pokemonCache[pokemonId]!;
-          }
-
-          // print('Carregando detalhes do Pokémon: ${pokemon['name']} (ID: $pokemonId)');
-          final detailResponse = await http.get(Uri.parse(pokemonUrl))
-              .timeout(const Duration(seconds: 10)); // Timeout menor para detalhes individuais
-              
-          if (detailResponse.statusCode == 200) {
-            final detailData = json.decode(detailResponse.body);
-            final pokemonObj = Pokemon.fromDetailJson(detailData);
-            _pokemonCache[pokemonId] = pokemonObj;
-            // print('Pokémon carregado com sucesso: ${pokemonObj.name}');
-            return pokemonObj;
-          } else {
-            // print('Erro ao carregar detalhes do Pokémon: ${detailResponse.statusCode}');
-            return null; // Retorna null em caso de erro para filtrar depois
-          }
-        } catch (e) {
-          // print('Erro ao carregar Pokémon ${pokemon['name']}: $e');
-           return null; // Retorna null em caso de erro
-        }
-      }).toList();
-
-      List<Pokemon> fetchedPokemons = [];
-      try {
-        final detailResults = await Future.wait(futures, eagerError: false);
-        fetchedPokemons = detailResults
-            .whereType<Pokemon>() // Garante que é um Pokemon e não null
-            .map((result) => result as Pokemon)
-            .toList();
-         print('Detalhes carregados para ${fetchedPokemons.length} Pokémon.');
-      } catch (e) {
-        print('Erro ao processar resultados dos detalhes: $e');
-      }
-
+      // Buscar detalhes dos Pokémon selecionados
+      final fetchedPokemons = await _fetchPokemonDetails(resultsToFetchDetails);
+      
       if (fetchedPokemons.isEmpty) {
-        print('Nenhum Pokémon com detalhes carregados com sucesso.');
-        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons };
+        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
       }
 
-      // Agora, aplica os filtros se necessário
-      List<Pokemon> finalPokemonList;
-      int totalFilteredCount;
-
-      if (hasActiveFilters) {
-        print('Aplicando filtros...');
-        // Precisa buscar os stats para filtrar por powerRange (se necessário)
+      // Aplicar filtros finais (principalmente filtro de poder se necessário)
+      List<Pokemon> finalPokemonList = fetchedPokemons;
+      
+      if (hasPowerFilter) {
+        // Buscar stats apenas para os Pokémon que chegaram até aqui
         await _ensureStatsForFilter(fetchedPokemons, powerRange);
-
+        
         finalPokemonList = fetchedPokemons.where((pokemon) {
-          // Usa o serviço de filtro
           return PokemonFilterService.shouldIncludePokemon(
             pokemon: pokemon,
-            selectedTypes: selectedTypes ?? {},
-            selectedGeneration: selectedGeneration ?? 0,
-            powerRange: powerRange ?? const RangeValues(0, 1000),
-            statsCache: _statsCache, // Passa o cache de stats
+            selectedTypes: {},  // Filtros de tipo já aplicados
+            selectedGeneration: 0,  // Filtro de geração já aplicado
+            powerRange: powerRange,
+            statsCache: _statsCache,
           );
         }).toList();
-        totalFilteredCount = finalPokemonList.length;
-        print('Após filtros, ${finalPokemonList.length} Pokémon encontrados.');
-      } else {
-        finalPokemonList = fetchedPokemons;
-        totalFilteredCount = totalApiPokemons; // Total sem filtros é o total da API
       }
 
-      // Ordenar a lista (filtrada ou não)
+      // Ordenar
       finalPokemonList.sort((a, b) => a.id.compareTo(b.id));
 
-      // Paginar o resultado FINAL (filtrado ou não)
-      List<Pokemon> pagePokemons;
-      if (hasActiveFilters) {
-        // Se filtros estão ativos, paginamos a lista filtrada completa
-        final int startIndex = offset;
-        final int endIndex = startIndex + pageSize;
-        pagePokemons = finalPokemonList.length > startIndex 
-            ? finalPokemonList.sublist(startIndex, endIndex > finalPokemonList.length ? finalPokemonList.length : endIndex) 
-            : [];
-      } else {
-        // Se não há filtros, a lista final JÁ é a página correta (pois buscamos apenas ela)
-        pagePokemons = finalPokemonList;
+      // Salvar no cache inteligente
+      for (final pokemon in finalPokemonList) {
+        await PokemonCacheService.setPokemon(pokemon);
       }
 
-      print('Retornando ${pagePokemons.length} Pokémon para a página $page. Total (filtrado/geral): $totalFilteredCount');
+      final totalCount = hasActiveFilters 
+          ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange)
+          : totalApiPokemons;
 
       return {
-        'pokemons': pagePokemons,
-        'total': totalFilteredCount, // Retorna o total CORRETO (filtrado ou geral)
+        'pokemons': finalPokemonList,
+        'total': totalCount,
       };
     } catch (e) {
       print('Erro geral ao carregar lista de Pokémon: $e');
       return {'pokemons': _getDefaultPokemons(), 'total': 10};
+    }
+  }
+
+  // Método auxiliar para pré-filtrar resultados sem buscar detalhes
+  Future<List<Map<String, dynamic>>> _preFilterResults(
+    List results,
+    Map<String, bool>? selectedTypes,
+    int? selectedGeneration,
+    RangeValues? powerRange,
+  ) async {
+    List<Map<String, dynamic>> filteredResults = [];
+    
+    for (final result in results) {
+      final pokemonUrl = result['url'] as String;
+      final pokemonId = int.parse(pokemonUrl.split('/')[6]);
+      
+      // Aplicar filtro de geração (não precisa de requisição)
+      if (selectedGeneration != null && selectedGeneration > 0) {
+        final generation = _getPokemonGeneration(pokemonId);
+        if (generation != selectedGeneration) {
+          continue;
+        }
+      }
+      
+      // Verificar se já temos dados em cache para aplicar outros filtros
+      final cachedPokemon = PokemonCacheService.getPokemon(pokemonId);
+      if (cachedPokemon != null) {
+        // Aplicar filtros usando dados do cache
+        if (selectedTypes != null && selectedTypes.isNotEmpty) {
+          final selectedTypesList = selectedTypes.entries
+              .where((entry) => entry.value)
+              .map((entry) => entry.key)
+              .toList();
+          
+          final hasAnySelectedType = selectedTypesList.any((selectedType) =>
+            cachedPokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
+          );
+          
+          if (!hasAnySelectedType) continue;
+        }
+        
+        // Filtro de poder (se temos stats em cache)
+        if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
+          final stats = PokemonCacheService.getStats(pokemonId);
+          if (stats != null) {
+            final totalPower = stats.values.reduce((a, b) => a + b);
+            if (totalPower < powerRange.start || totalPower > powerRange.end) {
+              continue;
+            }
+          }
+        }
+      }
+      
+      filteredResults.add(result);
+    }
+    
+    return filteredResults;
+  }
+
+  // Método auxiliar para tentar obter resultados filtrados do cache
+  Future<List<Pokemon>> _tryGetFilteredFromCache({
+    Map<String, bool>? selectedTypes,
+    int? selectedGeneration,
+    RangeValues? powerRange,
+    int page = 1,
+  }) async {
+    try {
+      // Implementar lógica para buscar do cache inteligente
+      final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
+      if (allCachedPokemons.isEmpty) return [];
+      
+      // Aplicar filtros
+      final filteredPokemons = allCachedPokemons.where((pokemon) {
+        return PokemonFilterService.shouldIncludePokemon(
+          pokemon: pokemon,
+          selectedTypes: selectedTypes ?? {},
+          selectedGeneration: selectedGeneration ?? 0,
+          powerRange: powerRange ?? const RangeValues(0, 1000),
+          statsCache: _statsCache,
+        );
+      }).toList();
+      
+      // Aplicar paginação
+      final int offset = (page - 1) * pageSize;
+      final int startIndex = offset;
+      final int endIndex = startIndex + pageSize;
+      
+      if (filteredPokemons.length <= startIndex) return [];
+      
+      return filteredPokemons.sublist(
+        startIndex, 
+        endIndex > filteredPokemons.length ? filteredPokemons.length : endIndex
+      );
+    } catch (e) {
+      print('Erro ao buscar do cache: $e');
+      return [];
+    }
+  }
+
+  // Método auxiliar para obter o total de resultados filtrados
+  Future<int> _getFilteredTotal(
+    Map<String, bool>? selectedTypes,
+    int? selectedGeneration,
+    RangeValues? powerRange,
+  ) async {
+    try {
+      final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
+      if (allCachedPokemons.isEmpty) return 0;
+      
+      final filteredPokemons = allCachedPokemons.where((pokemon) {
+        return PokemonFilterService.shouldIncludePokemon(
+          pokemon: pokemon,
+          selectedTypes: selectedTypes ?? {},
+          selectedGeneration: selectedGeneration ?? 0,
+          powerRange: powerRange ?? const RangeValues(0, 1000),
+          statsCache: _statsCache,
+        );
+      }).toList();
+      
+      return filteredPokemons.length;
+    } catch (e) {
+      print('Erro ao calcular total filtrado: $e');
+      return 0;
+    }
+  }
+
+  // Método auxiliar para buscar detalhes dos Pokémon
+  Future<List<Pokemon>> _fetchPokemonDetails(List<Map<String, dynamic>> pokemonList) async {
+    final futures = pokemonList.map((pokemon) async {
+      try {
+        final pokemonUrl = pokemon['url'] as String;
+        final pokemonId = int.parse(pokemonUrl.split('/')[6]);
+
+        // Verificar cache inteligente primeiro
+        final cachedPokemon = PokemonCacheService.getPokemon(pokemonId);
+        if (cachedPokemon != null) {
+          return cachedPokemon;
+        }
+
+        // Verificar cache legado
+        if (_pokemonCache.containsKey(pokemonId)) {
+          return _pokemonCache[pokemonId]!;
+        }
+
+        final detailResponse = await http.get(Uri.parse(pokemonUrl))
+            .timeout(const Duration(seconds: 10));
+            
+        if (detailResponse.statusCode == 200) {
+          final detailData = json.decode(detailResponse.body);
+          final pokemonObj = Pokemon.fromDetailJson(detailData);
+          
+          // Salvar no cache legado
+          _pokemonCache[pokemonId] = pokemonObj;
+          
+          // Salvar no cache inteligente
+          await PokemonCacheService.setPokemon(pokemonObj);
+          
+          return pokemonObj;
+        } else {
+          return null;
+        }
+      } catch (e) {
+        return null;
+      }
+    }).toList();
+
+    try {
+      final detailResults = await Future.wait(futures, eagerError: false);
+      return detailResults
+          .whereType<Pokemon>()
+          .toList();
+    } catch (e) {
+      print('Erro ao processar resultados dos detalhes: $e');
+      return [];
     }
   }
 
@@ -190,7 +347,8 @@ class PokemonListService {
 
     List<Future<void>> statFutures = [];
     for (var pokemon in pokemonsToFilter) {
-      if (!_statsCache.containsKey(pokemon.id)) {
+      // Verificar cache inteligente primeiro, depois legado
+      if (!PokemonCacheService.hasStats(pokemon.id) && !_statsCache.containsKey(pokemon.id)) {
         statFutures.add(fetchPokemonStats(pokemon.id)); // fetchPokemonStats deve adicionar ao _statsCache
       }
     }
@@ -199,6 +357,7 @@ class PokemonListService {
       print('Buscando stats para ${statFutures.length} Pokémon para aplicar filtro de poder...');
       await Future.wait(statFutures).catchError((e) {
         print("Erro ao buscar alguns stats para filtro: $e. Filtro de poder pode estar incompleto.");
+        return <void>[]; // Retorna lista vazia em caso de erro
       });
       print('Stats para filtro carregados.');
     }
@@ -206,6 +365,12 @@ class PokemonListService {
 
   // Adicione ou modifique fetchPokemonStats para usar o cache e tratar erros
   Future<Map<String, int>?> fetchPokemonStats(int pokemonId) async {
+    // Verificar cache inteligente primeiro
+    final cachedStats = PokemonCacheService.getStats(pokemonId);
+    if (cachedStats != null) {
+      return cachedStats;
+    }
+    
     if (_statsCache.containsKey(pokemonId)) {
       // Retorna o valor do cache se já existir (pode ser null se falhou antes)
       return _statsCache[pokemonId];
@@ -225,7 +390,13 @@ class PokemonListService {
         // Adiciona o poder total ao cache para referência rápida, se necessário
         stats['total_power'] = totalPower;
         print('Stats para ID $pokemonId carregados. Poder total: $totalPower');
-        _statsCache[pokemonId] = stats; // Armazena stats válidos no cache
+        
+        // Salvar no cache legado
+        _statsCache[pokemonId] = stats;
+        
+        // Salvar no cache inteligente
+        await PokemonCacheService.setStats(pokemonId, stats);
+        
         return stats;
       } else {
         print('Erro ao buscar stats para ID $pokemonId: ${response.statusCode}');
@@ -277,10 +448,34 @@ class PokemonListService {
       return [];
     }
 
-    // Verificar cache para consultas repetidas
+    // Inicializar cache se não foi inicializado
+    await PokemonCacheService.initialize();
+
+    // Primeiro tenta busca no cache inteligente
+    final cachedResults = PokemonCacheService.searchPokemons(query);
+    if (cachedResults.isNotEmpty) {
+      print('Encontrados ${cachedResults.length} resultados no cache para: $query');
+      
+      // Aplicar filtros nos resultados do cache
+      final filteredResults = cachedResults.where((pokemon) {
+        return PokemonFilterService.shouldIncludePokemon(
+          pokemon: pokemon,
+          selectedTypes: selectedTypes ?? {},
+          selectedGeneration: selectedGeneration ?? 0,
+          powerRange: powerRange ?? const RangeValues(0, 1000),
+          statsCache: {}, // O cache de stats é interno do PokemonCacheService
+        );
+      }).toList();
+      
+      if (filteredResults.isNotEmpty) {
+        return filteredResults;
+      }
+    }
+
+    // Verificar cache legado para consultas repetidas
     final cacheKey = '${query}_${selectedTypes}_${selectedGeneration}_${powerRange?.start}_${powerRange?.end}';
     if (_searchCache.containsKey(cacheKey)) {
-      print('Usando resultados em cache para: $query');
+      print('Usando resultados em cache legado para: $query');
       return _searchCache[cacheKey]!;
     }
 
@@ -314,7 +509,13 @@ class PokemonListService {
           final pokemonUrl = pokemon['url'] as String;
           final pokemonId = int.parse(pokemonUrl.split('/')[6]);
 
-          // Verificar cache antes de buscar
+          // Verificar cache inteligente primeiro
+          final cachedPokemon = PokemonCacheService.getPokemon(pokemonId);
+          if (cachedPokemon != null) {
+            return cachedPokemon;
+          }
+
+          // Verificar cache legado
           if (_pokemonCache.containsKey(pokemonId)) {
             return _pokemonCache[pokemonId]!;
           }
@@ -325,7 +526,13 @@ class PokemonListService {
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
             final pokemonObj = Pokemon.fromDetailJson(detailData);
-            _pokemonCache[pokemonId] = pokemonObj; // Manter o cache na busca
+            
+            // Salvar no cache legado
+            _pokemonCache[pokemonId] = pokemonObj;
+            
+            // Salvar no cache inteligente
+            await PokemonCacheService.setPokemon(pokemonObj);
+            
             return pokemonObj;
           } else {
             return _createDefaultPokemon(pokemonId, pokemon['name']);
@@ -444,4 +651,4 @@ class PokemonListService {
     if (pokemonId <= 809) return 7;
     return 8;
   }
-} 
+}

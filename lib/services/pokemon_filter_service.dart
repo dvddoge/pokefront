@@ -46,6 +46,11 @@ class PokemonFilterService {
     return true;
   }
 
+  // Método público para obter a geração de um Pokémon
+  static int getPokemonGeneration(int pokemonId) {
+    return _getPokemonGeneration(pokemonId);
+  }
+
   static int _getPokemonGeneration(int pokemonId) {
     if (pokemonId <= 151) return 1; // Gen 1
     if (pokemonId <= 251) return 2; // Gen 2
@@ -58,4 +63,4 @@ class PokemonFilterService {
     // Assumindo que IDs > 898 são Gen 9 (ou posteriores, mas a API buscada vai até ~1000)
     return 9; 
   }
-} 
+}

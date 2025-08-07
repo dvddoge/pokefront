@@ -1,9 +1,20 @@
 import 'package:flutter/material.dart';
 import 'screens/pokemon/pokemon_screen.dart';
 import 'theme.dart' hide NavigationService;
+import 'services/pokemon_cache_service.dart';
 import 'services/image_preload_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar cache otimizado
+  try {
+    await PokemonCacheService.initialize();
+    print('Cache inicializado com sucesso no main()');
+  } catch (e) {
+    print('Erro ao inicializar cache no main(): $e');
+  }
+  
   runApp(const MyApp());
 }
 
