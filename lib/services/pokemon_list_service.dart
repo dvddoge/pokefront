@@ -48,22 +48,26 @@ class PokemonListService {
     try {
       // Inicializar cache inteligente
       await PokemonCacheService.initialize();
-      
-      // Primeira tentativa: buscar resultados filtrados do cache inteligente
+
+      // Usar cache para filtros apenas se a cobertura do cache for alta
       if (hasActiveFilters) {
-        final cachedResults = await _tryGetFilteredFromCache(
-          selectedTypes: selectedTypes,
-          selectedGeneration: selectedGeneration,
-          powerRange: powerRange,
-          page: page,
-        );
-        
-        if (cachedResults.isNotEmpty) {
-          print('Usando resultados filtrados do cache para página $page');
-          return {
-            'pokemons': cachedResults,
-            'total': await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange),
-          };
+        final cachedCoverage = PokemonCacheService.getAllCachedPokemons().length;
+        final canServeFromCache = cachedCoverage >= 800;
+        if (canServeFromCache) {
+          final cachedResults = await _tryGetFilteredFromCache(
+            selectedTypes: selectedTypes,
+            selectedGeneration: selectedGeneration,
+            powerRange: powerRange,
+            page: page,
+          );
+
+          if (cachedResults.isNotEmpty) {
+            print('Usando resultados filtrados do cache para página $page');
+            return {
+              'pokemons': cachedResults,
+              'total': await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange),
+            };
+          }
         }
       }
 

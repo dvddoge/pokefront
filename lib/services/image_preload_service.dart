@@ -16,9 +16,16 @@ class ImagePreloadService {
       final context = NavigationService.navigatorKey.currentContext;
       if (context == null) return;
 
-      final provider = CachedNetworkImageProvider(pokemon.imageUrl);
-      await precacheImage(provider, context);
-      _preloadedImages.add(pokemon.imageUrl);
+      try {
+        final provider = CachedNetworkImageProvider(pokemon.imageUrl);
+        await precacheImage(provider, context);
+        _preloadedImages.add(pokemon.imageUrl);
+      } catch (_) {
+        final fallbackUrl = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png';
+        final provider = CachedNetworkImageProvider(fallbackUrl);
+        await precacheImage(provider, context);
+        _preloadedImages.add(fallbackUrl);
+      }
     } catch (e) {
       debugPrint('Aviso: Imagem não pré-carregada para ${pokemon.name}');
     }

@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
 import 'dart:async';
 import 'dart:math' as math;
-import 'package:http/http.dart' as http;
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:shimmer/shimmer.dart';
+import '../../widgets/pokemon_net_image.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 
 import '../../models/pokemon.dart';
-import '../../widgets/banner_pattern_painter.dart';
-import '../../widgets/pokeball_painter.dart';
 import '../../services/image_preload_service.dart';
 import '../../services/pokemon_list_service.dart';
 import '../../widgets/subtle_no_results.dart';
@@ -17,7 +12,6 @@ import '../pokemon_comparison_screen.dart' as comparison;
 import '../pokemon_detail_screen.dart' as detail;
 import '../battle/pokemon_battle_screen.dart';
 import '../battle/components/battle_transition.dart';
-import 'pokemon_grid.dart';
 import 'pokemon_search.dart';
 import 'pokemon_filters.dart';
 import '../../services/pokemon_filter_service.dart';
@@ -783,115 +777,77 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         ),
                       ),
                     ),
-                  CachedNetworkImage(
-                    imageUrl: pokemon.imageUrl,
-                    imageBuilder: (context, imageProvider) => Column(
-                      children: [
-                        Container(
-                          height: imageHeight,
-                          alignment: Alignment.center,
-                          padding: const EdgeInsets.all(8),
-                          child: Hero(
-                            tag: 'pokemon-${pokemon.id}',
-                            child: Image(
-                              image: imageProvider,
-                              height: imageHeight,
-                              fit: BoxFit.contain,
-                            ),
+                  Column(
+                    children: [
+                      Container(
+                        height: imageHeight,
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(8),
+                        child: Hero(
+                          tag: 'pokemon-${pokemon.id}',
+                          child: PokemonNetImage(
+                            imageUrl: pokemon.imageUrl,
+                            pokemonId: pokemon.id,
+                            height: imageHeight,
+                            fit: BoxFit.contain,
                           ),
                         ),
-                        Expanded(
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  pokemon.name.toUpperCase(),
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                      ),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                pokemon.name.toUpperCase(),
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
-                                const SizedBox(height: 4),
-                                Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: pokemon.types.map((type) {
-                                        final color = getTypeColor(type); // Note que aqui não tem 'widget.'
-                                        return Container(
-                                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                                            width: 20,
-                                            height: 20,
-                                            decoration: BoxDecoration(
-                                                color: color,
-                                                shape: BoxShape.circle,
-                                                boxShadow: [
-                                                    BoxShadow(
-                                                        color: Colors.black.withOpacity(0.2),
-                                                        spreadRadius: 1,
-                                                        blurRadius: 2,
-                                                        offset: const Offset(0, 1),
-                                                    ),
-                                                ],
-                                            ),
-                                            child: Center(
-                                                child: Text(
-                                                    type.substring(0, 1).toUpperCase(),
-                                                    style: const TextStyle(
-                                                        color: Colors.white,
-                                                        fontSize: 11,
-                                                        fontWeight: FontWeight.bold,
-                                                    ),
-                                                ),
-                                            ),
-                                        );
-                                    }).toList(),
-                                )
-                              ],
-                            ),
-                          ),
-                        )
-                      ],
-                    ),
-                    placeholder: (context, url) => Center(
-                      child: AnimatedBuilder(
-                        animation: _loadingAnimationController,
-                        builder: (context, child) {
-                          return Transform.rotate(
-                            angle: _loadingAnimationController.value * 2 * math.pi,
-                            child: CustomPaint(
-                              size: const Size(40, 40),
-                              painter: PokeballPainter(
-                                color: Colors.red[300]!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.error_outline, color: Colors.red[300], size: 32),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Erro ao carregar',
-                            style: TextStyle(
-                              color: Colors.red[300],
-                              fontSize: 12,
-                            ),
-                            textAlign: TextAlign.center,
+                              const SizedBox(height: 4),
+                              Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: pokemon.types.map((type) {
+                                      final color = getTypeColor(type);
+                                      return Container(
+                                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                                          width: 20,
+                                          height: 20,
+                                          decoration: BoxDecoration(
+                                              color: color,
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                  BoxShadow(
+                                                      color: Colors.black.withOpacity(0.2),
+                                                      spreadRadius: 1,
+                                                      blurRadius: 2,
+                                                      offset: const Offset(0, 1),
+                                                  ),
+                                              ],
+                                          ),
+                                          child: Center(
+                                              child: Text(
+                                                  type.substring(0, 1).toUpperCase(),
+                                                  style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.bold,
+                                                  ),
+                                              ),
+                                          ),
+                                      );
+                                  }).toList(),
+                              )
+                            ],
                           ),
-                        ],
-                      ),
-                    ),
-                    errorListener: (error) {
-                      print('Erro ao carregar imagem: $error');
-                    },
+                        ),
+                      )
+                    ],
                   ),
                 ],
               ),
@@ -926,23 +882,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   ),
                 ],
               ),
-              child: Image.network(
-                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/items/poke-ball.png',
-                height: 24,
-                width: 24,
-                errorBuilder: (context, error, stackTrace) => Icon(Icons.error_outline, color: Colors.white.withOpacity(0.7), size: 24),
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white.withOpacity(0.7)),
-                    ),
-                  );
-                },
-              ),
+              child: Icon(Icons.catching_pokemon, color: Colors.red[700], size: 22),
             ),
             const SizedBox(width: 12),
             ShaderMask(
@@ -1222,8 +1162,9 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 children: [
                   Hero(
                     tag: 'compare-${pokemonToCompare!.id}',
-                    child: CachedNetworkImage(
+                    child: PokemonNetImage(
                       imageUrl: pokemonToCompare!.imageUrl,
+                      pokemonId: pokemonToCompare!.id,
                       height: 40,
                     ),
                   ),
@@ -1402,10 +1343,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: typeColor.withOpacity(0.1),
-                    child: CachedNetworkImage(
-                      imageUrl: currentPokemon.imageUrl,
-                      height: 80,
-                    ),
+                   child: PokemonNetImage(
+                     imageUrl: currentPokemon.imageUrl,
+                     pokemonId: currentPokemon.id,
+                     height: 80,
+                   ),
                   ),
                   const SizedBox(height: 12),
                   Text(

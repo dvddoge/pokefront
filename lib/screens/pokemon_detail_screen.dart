@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/pokemon_net_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../widgets/animated_counter.dart';
 import '../widgets/banner_pattern_painter.dart';
@@ -272,17 +272,12 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                                 offset: Offset(0, _floatingAnimation.value),
                                 child: Hero(
                                   tag: 'pokemon-${widget.pokemonId}',
-                                  child: CachedNetworkImage(
-                                    imageUrl: pokemonData['sprites']['other']['official-artwork']['front_default'] ?? 
+                                  child: PokemonNetImage(
+                                    imageUrl: pokemonData['sprites']['other']['official-artwork']['front_default'] ??
                                         'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${widget.pokemonId}.png',
+                                    pokemonId: widget.pokemonId,
                                     height: 200,
                                     fit: BoxFit.contain,
-                                    placeholder: (context, url) => Shimmer.fromColors(
-                                      baseColor: Colors.grey[300]!,
-                                      highlightColor: Colors.grey[100]!,
-                                      child: Container(color: Colors.white),
-                                    ),
-                                    errorWidget: (context, url, error) => const Icon(Icons.error),
                                   ),
                                 ),
                               );
@@ -647,15 +642,11 @@ class _PokemonDetailScreenState extends State<PokemonDetailScreen> with SingleTi
                             ),
                             child: Column(
                               children: [
-                                CachedNetworkImage(
+                                PokemonNetImage(
                                   imageUrl: imageUrl,
+                                  pokemonId: evoId,
                                   height: 100,
-                                  placeholder: (context, url) => Shimmer.fromColors(
-                                    baseColor: Colors.grey[300]!,
-                                    highlightColor: Colors.grey[100]!,
-                                    child: Container(color: Colors.white),
-                                  ),
-                                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                                  fit: BoxFit.contain,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(

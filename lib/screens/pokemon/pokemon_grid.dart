@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
 import 'dart:math' as math;
 
 import '../../models/pokemon.dart';
 import '../../widgets/pokeball_painter.dart';
+import '../../widgets/pokemon_net_image.dart';
 import '../../services/pokemon_list_service.dart';
 
 class PokemonGrid extends StatefulWidget {
@@ -290,12 +288,12 @@ class _PokemonGridState extends State<PokemonGrid> {
                           children: [
                             Hero(
                               tag: 'pokemon-${pokemon.id}',
-                              child: CachedNetworkImage(
+                              child: PokemonNetImage(
                                 imageUrl: pokemon.imageUrl,
+                                pokemonId: pokemon.id,
                                 height: imageHeight,
-                                memCacheHeight: (imageHeight * MediaQuery.of(context).devicePixelRatio).round(),
                                 fit: BoxFit.contain,
-                                placeholder: (context, url) => Center(
+                                placeholder: Center(
                                   child: AnimatedBuilder(
                                     animation: widget.loadingAnimationController,
                                     builder: (context, child) {
@@ -311,13 +309,7 @@ class _PokemonGridState extends State<PokemonGrid> {
                                     },
                                   ),
                                 ),
-                                errorWidget: (context, url, error) => Center(
-                                  child: Icon(
-                                    Icons.error_outline,
-                                    color: Colors.grey[400],
-                                    size: imageHeight * 0.5,
-                                  ),
-                                ),
+                                fallbackPlaceholder: const SizedBox.shrink(),
                               ),
                             ),
                             // Pokébola central grande e transparente

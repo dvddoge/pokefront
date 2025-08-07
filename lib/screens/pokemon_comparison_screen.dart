@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'dart:math' as math;
 import '../models/pokemon.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../widgets/pokemon_net_image.dart';
 import '../widgets/animated_counter.dart';
 import '../widgets/banner_pattern_painter.dart';
 import '../widgets/stat_comparison_bar.dart';
@@ -289,11 +289,7 @@ class _PokemonComparisonScreenState extends State<PokemonComparisonScreen> with 
                       children: [
                         Hero(
                           tag: 'pokemon-${pokemon.id}',
-                          child: CachedNetworkImage(
-                            imageUrl: pokemon.imageUrl,
-                            height: 200,
-                            fit: BoxFit.contain,
-                          ),
+                          child: PokemonNetImage(imageUrl: pokemon.imageUrl, pokemonId: pokemon.id, height: 200, fit: BoxFit.contain),
                         ),
                         if (_showTypeAdvantage && typeAdvantage > 1.0)
                           TweenAnimationBuilder<double>(

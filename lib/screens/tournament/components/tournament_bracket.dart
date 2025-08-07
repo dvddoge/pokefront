@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../../widgets/pokemon_net_image.dart';
 import 'dart:math' as math;
 import '../../../models/opponent.dart';
 import '../../../models/pokemon.dart';
@@ -397,14 +398,10 @@ class _TournamentBracketState extends State<TournamentBracket>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    CachedNetworkImage(
+                    PokemonNetImage(
                       imageUrl: widget.playerPokemon.imageUrl,
+                      pokemonId: widget.playerPokemon.id,
                       height: 45,
-                      errorWidget: (context, url, error) => Icon(
-                        Icons.catching_pokemon,
-                        size: 45,
-                        color: Colors.blue[700],
-                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
