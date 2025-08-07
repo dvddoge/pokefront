@@ -83,22 +83,34 @@ class PokemonListService {
       List<Map<String, dynamic>> resultsToFetchDetails;
       
       if (hasActiveFilters) {
-        // OTIMIZAÇÃO: Aplicar filtros básicos ANTES de buscar detalhes
-        resultsToFetchDetails = await _preFilterResults(
-          results, 
-          selectedTypes, 
-          selectedGeneration, 
-          powerRange
+        // Pré-filtra candidatos e depois coleta a página com base nos que realmente casam
+        final preFiltered = await _preFilterResults(
+          results,
+          selectedTypes,
+          selectedGeneration,
+          powerRange,
         );
-        
-        // Aplicar paginação nos resultados pré-filtrados
-        final startIndex = offset;
-        final endIndex = startIndex + pageSize;
-        resultsToFetchDetails = resultsToFetchDetails.length > startIndex 
-            ? resultsToFetchDetails.sublist(startIndex, endIndex > resultsToFetchDetails.length ? resultsToFetchDetails.length : endIndex)
-            : [];
-            
-        print('Filtros aplicados. Buscando detalhes de ${resultsToFetchDetails.length} Pokémon para página $page');
+        print('Filtros ativos: ${preFiltered.length} candidatos (pré-filtrados). Construindo página $page com itens que realmente casam...');
+
+        final pagePokemons = await _collectFilteredPage(
+          candidates: preFiltered,
+          selectedTypes: selectedTypes,
+          selectedGeneration: selectedGeneration,
+          powerRange: powerRange,
+          page: page,
+        );
+
+        // Ordenar e salvar em cache inteligente
+        pagePokemons.sort((a, b) => a.id.compareTo(b.id));
+        for (final p in pagePokemons) {
+          await PokemonCacheService.setPokemon(p);
+        }
+
+        final totalCount = await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange);
+        return {
+          'pokemons': pagePokemons,
+          'total': totalCount,
+        };
       } else {
         // Sem filtros, busca detalhes apenas para a página atual
         final int startIndex = offset;
@@ -112,30 +124,29 @@ class PokemonListService {
         return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
       }
       
-      // Buscar detalhes dos Pokémon selecionados
-      final fetchedPokemons = await _fetchPokemonDetails(resultsToFetchDetails);
+  // Buscar detalhes dos Pokémon selecionados (modo sem filtro)
+  final fetchedPokemons = await _fetchPokemonDetails(resultsToFetchDetails);
       
       if (fetchedPokemons.isEmpty) {
         return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
       }
 
-      // Aplicar filtros finais (principalmente filtro de poder se necessário)
+      // Aplicar filtros finais sempre para garantir correção (tipo/geração) e aplicar poder se necessário
       List<Pokemon> finalPokemonList = fetchedPokemons;
-      
       if (hasPowerFilter) {
-        // Buscar stats apenas para os Pokémon que chegaram até aqui
         await _ensureStatsForFilter(fetchedPokemons, powerRange);
-        
-        finalPokemonList = fetchedPokemons.where((pokemon) {
-          return PokemonFilterService.shouldIncludePokemon(
-            pokemon: pokemon,
-            selectedTypes: {},  // Filtros de tipo já aplicados
-            selectedGeneration: 0,  // Filtro de geração já aplicado
-            powerRange: powerRange,
-            statsCache: _statsCache,
-          );
-        }).toList();
       }
+      final Map<int, Map<String, int>> statsForFilter = hasPowerFilter ? _statsCache : const {};
+  final RangeValues effectivePowerRange = hasPowerFilter ? powerRange : const RangeValues(0, 1000);
+      finalPokemonList = fetchedPokemons.where((pokemon) {
+        return PokemonFilterService.shouldIncludePokemon(
+          pokemon: pokemon,
+          selectedTypes: selectedTypes ?? {},
+          selectedGeneration: selectedGeneration ?? 0,
+          powerRange: effectivePowerRange,
+          statsCache: statsForFilter,
+        );
+      }).toList();
 
       // Ordenar
       finalPokemonList.sort((a, b) => a.id.compareTo(b.id));
@@ -145,9 +156,9 @@ class PokemonListService {
         await PokemonCacheService.setPokemon(pokemon);
       }
 
-      final totalCount = hasActiveFilters 
-          ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange)
-          : totalApiPokemons;
+    final totalCount = hasActiveFilters 
+      ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange) // Pode subestimar se stats não em cache para filtro de poder
+      : totalApiPokemons;
 
       return {
         'pokemons': finalPokemonList,
@@ -703,5 +714,72 @@ class PokemonListService {
     if (pokemonId <= 721) return 6;
     if (pokemonId <= 809) return 7;
     return 8;
+  }
+
+  // Coleta apenas os Pokémon necessários para formar a página filtrada desejada
+  Future<List<Pokemon>> _collectFilteredPage({
+    required List<Map<String, dynamic>> candidates,
+    required Map<String, bool>? selectedTypes,
+    required int? selectedGeneration,
+    required RangeValues? powerRange,
+    required int page,
+  }) async {
+    final int startIndex = (page - 1) * pageSize;
+  // endIndexExclusive não é necessário pois controlamos pelo length de accepted
+    final List<Pokemon> accepted = [];
+    int acceptedCountBefore = 0; // Contagem total de aceitos (não só da página)
+
+    // Stats temporários para filtro de poder
+    final Map<int, Map<String, int>> statsForFilter = {};
+
+    for (final c in candidates) {
+      final url = c['url'] as String;
+      final id = int.tryParse(url.split('/')[6]) ?? 0;
+      if (id == 0) continue;
+
+      // Tenta cache inteligente
+      Pokemon? p = PokemonCacheService.getPokemon(id);
+      if (p == null && _pokemonCache.containsKey(id)) {
+        p = _pokemonCache[id];
+      }
+      if (p == null) {
+        // Buscar detalhe deste candidato
+        final detailList = await _fetchPokemonDetails([c]);
+        if (detailList.isNotEmpty) p = detailList.first;
+      }
+      if (p == null) continue;
+
+      // Garantir stats se filtro de poder ativo
+      if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
+        var stats = PokemonCacheService.getStats(p.id) ?? _statsCache[p.id];
+        if (stats == null || stats.isEmpty) {
+          stats = await fetchPokemonStats(p.id) ?? {};
+        }
+        if (stats.isNotEmpty) statsForFilter[p.id] = stats;
+      }
+
+      final include = PokemonFilterService.shouldIncludePokemon(
+        pokemon: p,
+        selectedTypes: selectedTypes ?? {},
+        selectedGeneration: selectedGeneration ?? 0,
+        powerRange: powerRange ?? const RangeValues(0, 1000),
+        statsCache: statsForFilter,
+      );
+
+      if (include) {
+        // Incrementa total aceito global
+        acceptedCountBefore++;
+        // Se este aceito pertence ao range da página, adiciona
+        if (acceptedCountBefore > startIndex && accepted.length < pageSize) {
+          accepted.add(p);
+        }
+        // Se já completamos a página, podemos parar
+        if (accepted.length >= pageSize) {
+          break;
+        }
+      }
+    }
+
+    return accepted;
   }
 }
