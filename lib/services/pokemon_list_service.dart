@@ -92,7 +92,7 @@ class PokemonListService {
         );
         print('Filtros ativos: ${preFiltered.length} candidatos (pré-filtrados). Construindo página $page com itens que realmente casam...');
 
-        final pagePokemons = await _collectFilteredPage(
+        final pageAndTotal = await _buildFilteredPageAndTotal(
           candidates: preFiltered,
           selectedTypes: selectedTypes,
           selectedGeneration: selectedGeneration,
@@ -100,13 +100,15 @@ class PokemonListService {
           page: page,
         );
 
+        final pagePokemons = pageAndTotal['pokemons'] as List<Pokemon>;
+        final totalCount = pageAndTotal['total'] as int;
+
         // Ordenar e salvar em cache inteligente
         pagePokemons.sort((a, b) => a.id.compareTo(b.id));
         for (final p in pagePokemons) {
           await PokemonCacheService.setPokemon(p);
         }
 
-        final totalCount = await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange);
         return {
           'pokemons': pagePokemons,
           'total': totalCount,
@@ -157,7 +159,7 @@ class PokemonListService {
       }
 
     final totalCount = hasActiveFilters 
-      ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange) // Pode subestimar se stats não em cache para filtro de poder
+          ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange) // Modo sem filtro usa esse cálculo
       : totalApiPokemons;
 
       return {
@@ -716,8 +718,8 @@ class PokemonListService {
     return 8;
   }
 
-  // Coleta apenas os Pokémon necessários para formar a página filtrada desejada
-  Future<List<Pokemon>> _collectFilteredPage({
+  // Constrói a página filtrada E o total real em um único passe
+  Future<Map<String, dynamic>> _buildFilteredPageAndTotal({
     required List<Map<String, dynamic>> candidates,
     required Map<String, bool>? selectedTypes,
     required int? selectedGeneration,
@@ -725,9 +727,8 @@ class PokemonListService {
     required int page,
   }) async {
     final int startIndex = (page - 1) * pageSize;
-  // endIndexExclusive não é necessário pois controlamos pelo length de accepted
-    final List<Pokemon> accepted = [];
-    int acceptedCountBefore = 0; // Contagem total de aceitos (não só da página)
+    final List<Pokemon> pageItems = [];
+    int totalAccepted = 0;
 
     // Stats temporários para filtro de poder
     final Map<int, Map<String, int>> statsForFilter = {};
@@ -767,19 +768,18 @@ class PokemonListService {
       );
 
       if (include) {
-        // Incrementa total aceito global
-        acceptedCountBefore++;
-        // Se este aceito pertence ao range da página, adiciona
-        if (acceptedCountBefore > startIndex && accepted.length < pageSize) {
-          accepted.add(p);
-        }
-        // Se já completamos a página, podemos parar
-        if (accepted.length >= pageSize) {
-          break;
+        // Contabiliza
+        totalAccepted++;
+        // Se pertence à página atual, adiciona
+        if (totalAccepted > startIndex && pageItems.length < pageSize) {
+          pageItems.add(p);
         }
       }
     }
 
-    return accepted;
+    return {
+      'pokemons': pageItems,
+      'total': totalAccepted,
+    };
   }
 }
