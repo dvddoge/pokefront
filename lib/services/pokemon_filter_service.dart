@@ -33,7 +33,17 @@ class PokemonFilterService {
 
     if (powerRange != const RangeValues(0, 1000)) {
       if (statsCache.containsKey(pokemon.id)) {
-        int totalPower = statsCache[pokemon.id]!.values.reduce((a, b) => a + b);
+        final stats = statsCache[pokemon.id]!;
+        final keys = const ['hp','attack','defense','special-attack','special-defense','speed'];
+        int totalPower = 0;
+        for (final k in keys) {
+          if (stats.containsKey(k)) totalPower += stats[k]!;
+        }
+        if (totalPower == 0) {
+          totalPower = stats.entries
+              .where((e) => e.key != 'total_power')
+              .fold<int>(0, (sum, e) => sum + e.value);
+        }
         if (totalPower < powerRange.start || totalPower > powerRange.end) {
           return false;
         }

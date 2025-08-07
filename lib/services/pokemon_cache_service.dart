@@ -8,6 +8,8 @@ class PokemonCacheService {
   static const String _searchIndexKey = 'search_index';
   static const String _metadataKey = 'cache_metadata';
   static const String _statsKey = 'pokemon_stats';
+  static const String _baseListKey = 'pokemon_base_list';
+  static const String _baseListUpdatedKey = 'pokemon_base_list_updated_at';
   static const int _maxCacheSize = 500; // Máximo de 500 Pokémon em cache
   static const int _cacheExpirationDays = 7; // Cache expira em 7 dias
   
@@ -107,6 +109,34 @@ class PokemonCacheService {
       
     } catch (e) {
       print('Erro ao salvar cache no disco: $e');
+    }
+  }
+
+  // Base list (nomes/URLs) persistence helpers
+  static Future<List> getBaseListIfFresh(Duration ttl) async {
+    try {
+      final updatedAtStr = _prefs!.getString(_baseListUpdatedKey);
+      final dataStr = _prefs!.getString(_baseListKey);
+      if (updatedAtStr == null || dataStr == null) return [];
+      final updatedAt = DateTime.tryParse(updatedAtStr);
+      if (updatedAt == null) return [];
+      if (DateTime.now().difference(updatedAt) > ttl) return [];
+      final decoded = json.decode(dataStr);
+      if (decoded is List) {
+        return decoded;
+      }
+    } catch (e) {
+      print('Erro ao ler base list do disco: $e');
+    }
+    return [];
+  }
+
+  static Future<void> saveBaseList(List baseList) async {
+    try {
+      await _prefs!.setString(_baseListKey, json.encode(baseList));
+      await _prefs!.setString(_baseListUpdatedKey, DateTime.now().toIso8601String());
+    } catch (e) {
+      print('Erro ao salvar base list no disco: $e');
     }
   }
   

@@ -67,21 +67,11 @@ class PokemonListService {
         }
       }
 
-      // Buscar lista base de nomes/URLs
-      final response = await http.get(
-        Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0'),
-      ).timeout(const Duration(seconds: 15));
-
-      if (response.statusCode != 200) {
-        print('Erro na resposta da API: ${response.statusCode}');
-        return {'pokemons': _getDefaultPokemons(), 'total': 10};
-      }
-
-      final data = json.decode(response.body);
-      final List results = data['results'];
+      // Buscar lista base de nomes/URLs com persistência simples em memória/disco
+      final List results = await _getBaseListResults();
       final int totalApiPokemons = results.length;
       
-      if (results.isEmpty) {
+       if (results.isEmpty) {
         print('Nenhum resultado encontrado na API');
         return {'pokemons': _getDefaultPokemons(), 'total': 10};
       }
@@ -165,6 +155,41 @@ class PokemonListService {
     }
   }
 
+  static List? _cachedBaseResults;
+  static DateTime? _cachedBaseResultsAt;
+  static const _baseResultsTtl = Duration(hours: 12);
+
+  Future<List> _getBaseListResults() async {
+    if (_cachedBaseResults != null &&
+        _cachedBaseResultsAt != null &&
+        DateTime.now().difference(_cachedBaseResultsAt!) < _baseResultsTtl) {
+      return _cachedBaseResults!;
+    }
+
+    // Tenta do disco via PokemonCacheService
+    final diskList = await PokemonCacheService.getBaseListIfFresh(_baseResultsTtl);
+    if (diskList.isNotEmpty) {
+      _cachedBaseResults = diskList;
+      _cachedBaseResultsAt = DateTime.now();
+      return diskList;
+    }
+
+    try {
+      final response = await http
+          .get(Uri.parse('https://pokeapi.co/api/v2/pokemon?limit=1000&offset=0'))
+          .timeout(const Duration(seconds: 15));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        final List results = data['results'];
+        _cachedBaseResults = results;
+        _cachedBaseResultsAt = DateTime.now();
+        await PokemonCacheService.saveBaseList(results);
+        return results;
+      }
+    } catch (_) {}
+    return [];
+  }
+
   // Método auxiliar para pré-filtrar resultados sem buscar detalhes
   Future<List<Map<String, dynamic>>> _preFilterResults(
     List results,
@@ -207,7 +232,16 @@ class PokemonListService {
         if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
           final stats = PokemonCacheService.getStats(pokemonId);
           if (stats != null) {
-            final totalPower = stats.values.reduce((a, b) => a + b);
+            final keys = const ['hp','attack','defense','special-attack','special-defense','speed'];
+            int totalPower = 0;
+            for (final k in keys) {
+              if (stats.containsKey(k)) totalPower += stats[k]!;
+            }
+            if (totalPower == 0) {
+              totalPower = stats.entries
+                  .where((e) => e.key != 'total_power')
+                  .fold<int>(0, (sum, e) => sum + e.value);
+            }
             if (totalPower < powerRange.start || totalPower > powerRange.end) {
               continue;
             }
@@ -233,14 +267,19 @@ class PokemonListService {
       final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
       if (allCachedPokemons.isEmpty) return [];
       
-      // Aplicar filtros
+      // Aplicar filtros usando stats do cache inteligente quando disponíveis
+      final Map<int, Map<String, int>> statsForCached = {};
+      for (final p in allCachedPokemons) {
+        final s = PokemonCacheService.getStats(p.id);
+        if (s != null) statsForCached[p.id] = s;
+      }
       final filteredPokemons = allCachedPokemons.where((pokemon) {
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: selectedTypes ?? {},
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: powerRange ?? const RangeValues(0, 1000),
-          statsCache: _statsCache,
+          statsCache: statsForCached,
         );
       }).toList();
       
@@ -270,14 +309,19 @@ class PokemonListService {
     try {
       final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
       if (allCachedPokemons.isEmpty) return 0;
-      
+      final Map<int, Map<String, int>> statsForCached = {};
+      for (final p in allCachedPokemons) {
+        final s = PokemonCacheService.getStats(p.id);
+        if (s != null) statsForCached[p.id] = s;
+      }
+
       final filteredPokemons = allCachedPokemons.where((pokemon) {
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: selectedTypes ?? {},
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: powerRange ?? const RangeValues(0, 1000),
-          statsCache: _statsCache,
+          statsCache: statsForCached,
         );
       }).toList();
       
@@ -452,18 +496,23 @@ class PokemonListService {
     await PokemonCacheService.initialize();
 
     // Primeiro tenta busca no cache inteligente
-    final cachedResults = PokemonCacheService.searchPokemons(query);
+      final cachedResults = PokemonCacheService.searchPokemons(query);
     if (cachedResults.isNotEmpty) {
       print('Encontrados ${cachedResults.length} resultados no cache para: $query');
       
       // Aplicar filtros nos resultados do cache
+      final Map<int, Map<String, int>> statsForCached = {};
+      for (final p in cachedResults) {
+        final s = PokemonCacheService.getStats(p.id);
+        if (s != null) statsForCached[p.id] = s;
+      }
       final filteredResults = cachedResults.where((pokemon) {
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: selectedTypes ?? {},
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: powerRange ?? const RangeValues(0, 1000),
-          statsCache: {}, // O cache de stats é interno do PokemonCacheService
+          statsCache: statsForCached,
         );
       }).toList();
       
