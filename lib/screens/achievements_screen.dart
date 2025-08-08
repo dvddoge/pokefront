@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../models/tournament_reward.dart';
 import '../services/tournament_service.dart';
+import '../models/achievement.dart';
+import '../services/achievement_service.dart';
 
 class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({Key? key}) : super(key: key);
@@ -13,11 +15,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
   late TabController _tabController;
   List<TournamentReward> allRewards = [];
   List<TournamentReward> unlockedRewards = [];
+  TrainerMetaProgress trainer = const TrainerMetaProgress();
+  Map<String, AchievementProgress> achProgress = {};
+  List<AchievementDefinition> dailyDefs = const [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+  _tabController = TabController(length: 4, vsync: this);
     _loadRewards();
   }
 
@@ -31,6 +36,9 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
     allRewards = TournamentService.getAllRewards();
     // Carrega conquistas reais desbloqueadas
     unlockedRewards = await TournamentService.loadUnlockedAchievements();
+  trainer = await AchievementService.loadTrainer();
+  achProgress = await AchievementService.getAllProgress();
+  dailyDefs = await AchievementService.getDaily();
     if (mounted) {
       setState(() {});
     }
@@ -55,6 +63,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
             Tab(icon: Icon(Icons.emoji_events), text: 'Todas'),
             Tab(icon: Icon(Icons.military_tech), text: 'Medalhas'),
             Tab(icon: Icon(Icons.star), text: 'Conquistas'),
+            Tab(icon: Icon(Icons.calendar_today), text: 'Diárias'),
           ],
         ),
       ),
@@ -72,6 +81,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
             _buildAllAchievements(),
             _buildMedalsTab(medals, unlockedMedals),
             _buildAchievementsTab(achievements, unlockedAchievements),
+            _buildDailyTab(),
           ],
         ),
       ),
@@ -88,7 +98,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header com progresso geral
+          // Header com progresso geral + nível do treinador
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -124,6 +134,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
                             fontSize: 14,
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Treinador Nível ${trainer.level} · ${trainer.xpIntoLevel}/1000 XP',
+                          style: TextStyle(
+                            color: Colors.purple[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ],
                     ),
                     CircularProgressIndicator(
@@ -140,6 +158,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
                   backgroundColor: Colors.grey[300],
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.purple[700]!),
                   minHeight: 8,
+                ),
+                const SizedBox(height: 8),
+                LinearProgressIndicator(
+                  value: trainer.levelProgress,
+                  backgroundColor: Colors.purple[100],
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.purple[700]!),
+                  minHeight: 6,
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -180,6 +205,82 @@ class _AchievementsScreenState extends State<AchievementsScreen> with TickerProv
           const SizedBox(height: 12),
           ...allRewards.where((r) => !unlockedRewards.contains(r)).take(5)
               .map((reward) => _buildRewardCard(reward, false)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyTab() {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: ListView(
+        children: [
+          const Text(
+            'Missões Diárias',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          ...dailyDefs.map((def) {
+            final p = achProgress[def.id];
+            final current = (p?.current ?? 0).clamp(0, def.target);
+            final progressValue = def.target == 0 ? 0.0 : current / def.target;
+            final isDone = p?.unlocked == true;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDone ? Colors.green[300]! : Colors.grey[200]!,
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    isDone ? Icons.check_circle : Icons.flag,
+                    color: isDone ? Colors.green[600] : Colors.purple[700],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          def.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        Text(def.description, style: TextStyle(color: Colors.grey[600])),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: progressValue,
+                          backgroundColor: Colors.grey[200],
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.purple[700]!),
+                          minHeight: 6,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${current}/${def.target} · +${def.points} XP',
+                          style: TextStyle(
+                            color: isDone ? Colors.green[700] : Colors.purple[700],
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );

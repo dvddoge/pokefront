@@ -2,12 +2,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/opponent.dart';
 import '../../models/pokemon.dart';
 import '../../models/tournament_progress.dart';
 import '../../models/tournament_reward.dart';
 import '../../services/tournament_service.dart';
+import '../../services/achievement_service.dart';
 import '../battle/pokemon_battle_screen.dart';
 import 'components/tournament_bracket.dart';
 import 'components/victory_particles.dart';
@@ -115,11 +115,11 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       final battleEndTime = DateTime.now();
       final battleDuration = battleEndTime.difference(battleStartTime);
 
-      if (result == true) {
+  if (result == true) {
         // Calcula pontuação da batalha
         final battleScore = TournamentService.calculateBattleScore(
           opponentLevel: opponent.pokemonLevel,
-          playerLevel: widget.playerPokemon.level ?? 50,
+          playerLevel: widget.playerPokemon.level,
           battleTime: battleDuration,
           playerWon: true,
         );
@@ -131,6 +131,20 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
           tournamentTime: battleDuration,
           tournamentScore: battleScore,
         );
+
+        // Atualiza conquistas (batalha concluída)
+        final newlyUnlocked = await AchievementService.onBattleFinished(
+          playerWon: true,
+          battleTime: battleDuration,
+          // Dano sofrido: indisponível aqui, mantemos como >0 para não liberar 'intocável' indevidamente
+          damageTaken: 1,
+        );
+        if (newlyUnlocked.isNotEmpty) {
+          for (final def in newlyUnlocked) {
+            _showGenericAchievementToast(def.name, '+${def.points} XP');
+            await Future.delayed(const Duration(milliseconds: 400));
+          }
+        }
 
         setState(() {
           progress = progress.copyWith(
@@ -210,8 +224,18 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       tournamentScore: progress.currentScore,
     );
 
+  // Atualiza milestones baseados em estatísticas
+  final updatedStats = await TournamentService.loadPlayerStats();
+    final unlockedByStats = await AchievementService.onStatsUpdated(updatedStats);
+    if (unlockedByStats.isNotEmpty) {
+      for (final def in unlockedByStats) {
+        _showGenericAchievementToast(def.name, '+${def.points} XP');
+        await Future.delayed(const Duration(milliseconds: 400));
+      }
+    }
+
     // Carrega estatísticas atualizadas
-    final stats = await TournamentService.loadPlayerStats();
+  final stats = await TournamentService.loadPlayerStats();
     
     // Calcula recompensas
     final earnedRewards = await TournamentService.calculateEarnedRewards(
@@ -220,6 +244,49 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
     );
 
     _showVictoryDialog(earnedMedal, earnedRewards);
+  }
+
+  void _showGenericAchievementToast(String title, String subtitle) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.purple[700],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Icon(Icons.emoji_events, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    '🏅 Novo Desafio Cumprido!',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  Text(title, style: const TextStyle(fontSize: 16)),
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 12, color: Colors.purple[100]),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.purple[600],
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 
   void _showBattleScoreDialog(int score, String opponentName) {

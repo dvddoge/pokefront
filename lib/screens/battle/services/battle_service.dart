@@ -61,7 +61,13 @@ class BattleService {
 
     final double damage = (((((2 * level) / 5) + 2) * power * (attack / defense)) / 50) + 2;
     
-    final finalDamage = damage * modifier;
+  double finalDamage = damage * modifier;
+
+  // Pequeno ajuste baseado em diferença de velocidade (valoriza Speed de forma sutil)
+  // Máx ±10% de variação
+  final speedDiff = (attacker.speed - defender.speed).toDouble();
+  final speedFactor = (speedDiff / 200).clamp(-0.1, 0.1);
+  finalDamage *= (1 + speedFactor);
 
     if (typeEffectiveness > 1) {
       print("É super efetivo!");
@@ -89,13 +95,24 @@ class BattleService {
     }
 
     PokemonMove? bestMove;
-    double maxDamage = -1;
+    double bestScore = -1;
 
     for (var move in availableMoves) {
-      // Simula o dano para cada movimento
+      // Dano base simulado
       final simulatedDamage = calculateDamage(move, attacker, defender);
-      if (simulatedDamage > maxDamage) {
-        maxDamage = simulatedDamage;
+      // Precisão em 0..1
+      final acc = (move.accuracy.clamp(0, 100)) / 100.0;
+      // Bônus leve por STAB/efetividade (já incluso em calculateDamage, mas reforçamos a decisão)
+      double typeBonus = 1.0;
+      if (attacker.types.contains(move.type)) typeBonus *= 1.05; // 5%
+      final eff = _getEffectiveness(move.type, defender.types);
+      if (eff > 1.0) typeBonus *= 1.05; // 5% extra
+      if (eff == 0) typeBonus *= 0.5; // evita golpe inútil
+
+      // Score = dano esperado = dano * precisão, ajustado
+      final score = simulatedDamage * acc * typeBonus;
+      if (score > bestScore) {
+        bestScore = score;
         bestMove = move;
       }
     }

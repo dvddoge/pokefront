@@ -167,6 +167,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen> with TickerPr
             pokemon2Moves = PokemonMoveService.getDefaultMoves();
           }
 
+          // Define ordem inicial do turno por velocidade
+          // Em caso de empate, jogador 1 começa
+          isPlayer1Turn = (player1.speed >= player2.speed);
+
           isLoading = false;
           _battleScreenReady = true;
           battleLog = 'Um ${player2.name} selvagem apareceu!';
