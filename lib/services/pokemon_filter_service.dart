@@ -9,58 +9,46 @@ class PokemonFilterService {
     required RangeValues powerRange,
     required Map<int, Map<String, int>> statsCache,
   }) {
-    // Lógica OR: incluir se casar com QUALQUER filtro ativo (tipos OU geração OU poder)
-    final bool hasActiveTypeFilters = selectedTypes.entries.any((e) => e.value);
-    final bool hasGenerationFilter = selectedGeneration > 0;
-    final bool hasPowerFilter = powerRange != const RangeValues(0, 1000);
-    final bool anyFilterActive = hasActiveTypeFilters || hasGenerationFilter || hasPowerFilter;
+    if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
+      return true;
+    }
 
-    if (!anyFilterActive) return true; // Sem filtros => inclui tudo
-
-    bool matchesType = false;
-    bool matchesGeneration = false;
-    bool matchesPower = false;
-
-    if (hasActiveTypeFilters) {
-      final activeTypes = selectedTypes.entries
-          .where((e) => e.value)
-          .map((e) => e.key.toLowerCase())
+    if (selectedTypes.isNotEmpty) {
+      final selectedTypesList = selectedTypes.entries
+          .where((entry) => entry.value)
+          .map((entry) => entry.key)
           .toList();
-      final pokemonTypesLower = pokemon.types.map((t) => t.toLowerCase());
-      matchesType = pokemonTypesLower.any((t) => activeTypes.contains(t));
+      
+      bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
+        pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
+      );
+      
+      if (!hasAnySelectedType) return false;
     }
 
-    if (hasGenerationFilter) {
-      matchesGeneration = _getPokemonGeneration(pokemon.id) == selectedGeneration;
+    if (selectedGeneration > 0) {
+      int pokemonGen = _getPokemonGeneration(pokemon.id);
+      if (pokemonGen != selectedGeneration) return false;
     }
 
-    if (hasPowerFilter) {
+    if (powerRange != const RangeValues(0, 1000)) {
       if (statsCache.containsKey(pokemon.id)) {
-        final stats = statsCache[pokemon.id]!;
-        const keys = ['hp','attack','defense','special-attack','special-defense','speed'];
-        int totalPower = 0;
-        for (final k in keys) {
-          final val = stats[k];
-          if (val != null) totalPower += val;
+        int totalPower = statsCache[pokemon.id]!.values.reduce((a, b) => a + b);
+        if (totalPower < powerRange.start || totalPower > powerRange.end) {
+          return false;
         }
-        if (totalPower == 0) {
-          totalPower = stats.entries
-              .where((e) => e.key != 'total_power')
-              .fold<int>(0, (sum, e) => sum + e.value);
-        }
-        matchesPower = totalPower >= powerRange.start && totalPower <= powerRange.end;
       } else {
-        // Não tem stats ainda => simplesmente não casa com poder
-        matchesPower = false;
+        print("Excluindo ${pokemon.name} (ID: ${pokemon.id}) do filtro de poder por falta de stats no cache.");
+        return false;
       }
     }
 
-    return matchesType || matchesGeneration || matchesPower;
+    return true;
   }
 
   // Método público para obter a geração de um Pokémon
   static int getPokemonGeneration(int pokemonId) {
-  return _getPokemonGeneration(pokemonId);
+    return _getPokemonGeneration(pokemonId);
   }
 
   static int _getPokemonGeneration(int pokemonId) {
@@ -72,6 +60,7 @@ class PokemonFilterService {
     if (pokemonId <= 721) return 6; // Gen 6
     if (pokemonId <= 809) return 7; // Gen 7
     if (pokemonId <= 898) return 8; // Gen 8
-    return 9; // Gen 9 ou superior
+    // Assumindo que IDs > 898 são Gen 9 (ou posteriores, mas a API buscada vai até ~1000)
+    return 9; 
   }
 }
