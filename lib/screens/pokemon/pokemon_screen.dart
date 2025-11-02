@@ -50,7 +50,6 @@ class _PokemonScreenState extends State<PokemonScreen>
   Pokemon? pokemonToCompare;
   Map<String, int>? statsToCompare;
   bool _isLoadingStats = false;
-  final Map<int, Map<String, int>> _statsCache = {};
 
   // Novos estados para controle da transição
   bool _showClosingTransition = false;
@@ -451,7 +450,6 @@ class _PokemonScreenState extends State<PokemonScreen>
       selectedTypes: selectedTypes,
       selectedGeneration: selectedGeneration,
       powerRange: powerRange,
-      statsCache: _statsCache,
       heightRange: heightRange,
       weightRange: weightRange,
     );
@@ -1612,7 +1610,14 @@ class _PokemonScreenState extends State<PokemonScreen>
     });
     try {
       print("SearchPokemonTrigger: Buscando resultados brutos para '$query'");
-      final results = await _pokemonListService.searchPokemonByName(query);
+      final results = await _pokemonListService.searchPokemonByName(
+        query,
+        selectedTypes: selectedTypes,
+        selectedGeneration: selectedGeneration,
+        powerRange: powerRange,
+        heightRange: heightRange,
+        weightRange: weightRange,
+      );
       _handleSearchResults(results);
     } catch (e) {
       _handleSearchError('Erro ao buscar Pokémon: $e');

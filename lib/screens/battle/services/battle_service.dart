@@ -6,6 +6,13 @@ import '../../../models/status_condition.dart';
 class BattleService {
   static final math.Random _random = math.Random();
 
+  static double _statStageMultiplier(int stage) {
+    if (stage >= 0) {
+      return (2 + stage) / 2.0;
+    }
+    return 2.0 / (2 - stage);
+  }
+
   // Mapa de eficácia de tipos
   static final Map<String, Map<String, double>> _typeEffectiveness = {
     'normal': {'rock': 0.5, 'ghost': 0, 'steel': 0.5},
@@ -54,6 +61,16 @@ class BattleService {
         ? defender.defense.toDouble()
         : defender.specialDefense.toDouble();
 
+    final attackStageKey =
+        move.damageClass == 'physical' ? 'attack' : 'special-attack';
+    final defenseStageKey =
+        move.damageClass == 'physical' ? 'defense' : 'special-defense';
+
+    attack *=
+        _statStageMultiplier(attacker.statStages[attackStageKey] ?? 0);
+    final double adjustedDefense =
+        defense * _statStageMultiplier(defender.statStages[defenseStageKey] ?? 0);
+
     if (move.damageClass == 'physical' &&
         attackerStatus == StatusCondition.burn) {
       attack *= 0.5;
@@ -83,7 +100,7 @@ class BattleService {
         other;
 
     final double baseDamage =
-        (((((2 * level) / 5) + 2) * power * (attack / defense)) / 50) + 2;
+        (((((2 * level) / 5) + 2) * power * (attack / adjustedDefense)) / 50) + 2;
 
     final double finalDamage = baseDamage * modifier;
 

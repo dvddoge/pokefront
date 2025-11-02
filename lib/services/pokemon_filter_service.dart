@@ -7,26 +7,41 @@ class PokemonFilterService {
     required Map<String, bool> selectedTypes,
     required int selectedGeneration,
     required RangeValues powerRange,
-    required Map<int, Map<String, int>> statsCache,
+    Map<int, Map<String, int>>? statsCache,
+    RangeValues? heightRange,
+    RangeValues? weightRange,
   }) {
-    if (selectedTypes.isEmpty &&
+    const defaultPower = RangeValues(0, 1000);
+    const defaultHeight = RangeValues(0, 20);
+    const defaultWeight = RangeValues(0, 1000);
+
+    final effectiveHeight = heightRange ?? defaultHeight;
+    final effectiveWeight = weightRange ?? defaultWeight;
+    final hasSelectedTypes =
+        selectedTypes.entries.any((entry) => entry.value == true);
+
+    if (!hasSelectedTypes &&
         selectedGeneration == 0 &&
-        powerRange == const RangeValues(0, 1000)) {
+        powerRange == defaultPower &&
+        effectiveHeight == defaultHeight &&
+        effectiveWeight == defaultWeight) {
       return true;
     }
 
-    if (selectedTypes.isNotEmpty) {
-      final selectedTypesList = selectedTypes.entries
-          .where((entry) => entry.value)
-          .map((entry) => entry.key)
-          .toList();
+    final selectedTypesList = selectedTypes.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
 
-      bool hasAnySelectedType = selectedTypesList.any((selectedType) => pokemon
+    if (selectedTypesList.isNotEmpty) {
+      final hasAnySelectedType = selectedTypesList.any((selectedType) => pokemon
           .types
           .map((t) => t.toLowerCase())
           .contains(selectedType.toLowerCase()));
 
-      if (!hasAnySelectedType) return false;
+      if (!hasAnySelectedType) {
+        return false;
+      }
     }
 
     if (selectedGeneration > 0) {
@@ -34,20 +49,55 @@ class PokemonFilterService {
       if (pokemonGen != selectedGeneration) return false;
     }
 
-    if (powerRange != const RangeValues(0, 1000)) {
-      if (statsCache.containsKey(pokemon.id)) {
-        int totalPower = statsCache[pokemon.id]!.values.reduce((a, b) => a + b);
-        if (totalPower < powerRange.start || totalPower > powerRange.end) {
-          return false;
-        }
-      } else {
-        print(
-            "Excluindo ${pokemon.name} (ID: ${pokemon.id}) do filtro de poder por falta de stats no cache.");
+    if (powerRange != defaultPower) {
+      final totalPower = _resolveTotalPower(pokemon, statsCache);
+      if (totalPower == null) {
+        return false;
+      }
+      if (totalPower < powerRange.start || totalPower > powerRange.end) {
+        return false;
+      }
+    }
+
+    if (effectiveHeight != defaultHeight) {
+      final h = pokemon.heightMeters;
+      if (h == null || h < effectiveHeight.start || h > effectiveHeight.end) {
+        return false;
+      }
+    }
+
+    if (effectiveWeight != defaultWeight) {
+      final w = pokemon.weightKg;
+      if (w == null || w < effectiveWeight.start || w > effectiveWeight.end) {
         return false;
       }
     }
 
     return true;
+  }
+
+  static int? _resolveTotalPower(
+    Pokemon pokemon,
+    Map<int, Map<String, int>>? statsCache,
+  ) {
+    if (statsCache != null) {
+      final cached = statsCache[pokemon.id];
+      if (cached != null && cached.isNotEmpty) {
+        final totalFromCache = cached['total_power'];
+        if (totalFromCache != null && totalFromCache > 0) {
+          return totalFromCache;
+        }
+        final relevant = cached.entries
+            .where((entry) => entry.key != 'total_power')
+            .map((entry) => entry.value);
+        if (relevant.isNotEmpty) {
+          return relevant.fold<int>(0, (sum, value) => sum + value);
+        }
+      }
+    }
+
+    final fallback = pokemon.totalBaseStats;
+    return fallback > 0 ? fallback : null;
   }
 
   // Método público para obter a geração de um Pokémon

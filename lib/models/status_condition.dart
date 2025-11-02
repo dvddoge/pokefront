@@ -3,6 +3,7 @@ enum StatusCondition {
   burn,
   paralysis,
   poison,
+  toxic,
   sleep,
   freeze,
 }
@@ -20,6 +21,11 @@ extension StatusConditionX on StatusCondition {
       case 'poison':
       case 'psn':
         return StatusCondition.poison;
+      case 'badly-poisoned':
+      case 'badly_poisoned':
+      case 'toxic':
+      case 'tox':
+        return StatusCondition.toxic;
       case 'sleep':
       case 'slp':
         return StatusCondition.sleep;

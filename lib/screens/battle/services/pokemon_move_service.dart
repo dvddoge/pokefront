@@ -128,6 +128,10 @@ class PokemonMoveService {
         }
       }
 
+      final targetName = moveData['target']?['name'] as String? ?? '';
+      final drainRaw = meta['drain'] as num?;
+      final recoilRaw = meta['recoil'] as num?;
+
       return PokemonMove(
         name: (moveData['name'] as String? ?? candidate.name)
             .replaceAll('-', ' '),
@@ -141,10 +145,24 @@ class PokemonMoveService {
         ailment: meta['ailment']?['name'] as String?,
         ailmentChance:
             ((meta['ailment_chance'] ?? 0) as num).toDouble() / 100.0,
-        statChanges: statChanges,
+        statChanges: Map<String, int>.unmodifiable(statChanges),
         healPercent: (meta['healing'] as num? ?? 0) > 0
             ? ((meta['healing'] as num).toDouble() / 100.0)
             : null,
+        drain: (drainRaw != null && drainRaw > 0)
+            ? drainRaw.toDouble() / 100.0
+            : null,
+        recoil: (recoilRaw != null && recoilRaw < 0)
+            ? recoilRaw.toDouble().abs() / 100.0
+            : null,
+        minHits: (meta['min_hits'] as num?)?.toInt(),
+        maxHits: (meta['max_hits'] as num?)?.toInt(),
+        minTurns: (meta['min_turns'] as num?)?.toInt(),
+        maxTurns: (meta['max_turns'] as num?)?.toInt(),
+        statChance: ((meta['stat_chance'] ?? 100) as num).toDouble() / 100.0,
+        flinchChance:
+            ((meta['flinch_chance'] ?? 0) as num).toDouble() / 100.0,
+        targetsSelf: targetName.contains('user'),
       );
     } catch (e) {
       print('Erro ao obter detalhes do movimento ${candidate.name}: $e');

@@ -10,6 +10,15 @@ class PokemonMove {
   final double ailmentChance;
   final Map<String, int> statChanges;
   final double? healPercent;
+  final double? drain;
+  final double? recoil;
+  final int? minHits;
+  final int? maxHits;
+  final int? minTurns;
+  final int? maxTurns;
+  final double statChance;
+  final double? flinchChance;
+  final bool targetsSelf;
 
   const PokemonMove({
     required this.name,
@@ -23,6 +32,15 @@ class PokemonMove {
     this.ailmentChance = 0,
     this.statChanges = const {},
     this.healPercent,
+    this.drain,
+    this.recoil,
+    this.minHits,
+    this.maxHits,
+    this.minTurns,
+    this.maxTurns,
+    this.statChance = 1.0,
+    this.flinchChance,
+    this.targetsSelf = false,
   });
 
   bool get isStatusMove => damageClass == 'status' || (power == null);
@@ -39,6 +57,15 @@ class PokemonMove {
     double? ailmentChance,
     Map<String, int>? statChanges,
     double? healPercent,
+    double? drain,
+    double? recoil,
+    int? minHits,
+    int? maxHits,
+    int? minTurns,
+    int? maxTurns,
+    double? statChance,
+    double? flinchChance,
+    bool? targetsSelf,
   }) {
     return PokemonMove(
       name: name ?? this.name,
@@ -52,6 +79,15 @@ class PokemonMove {
       ailmentChance: ailmentChance ?? this.ailmentChance,
       statChanges: statChanges ?? this.statChanges,
       healPercent: healPercent ?? this.healPercent,
+      drain: drain ?? this.drain,
+      recoil: recoil ?? this.recoil,
+      minHits: minHits ?? this.minHits,
+      maxHits: maxHits ?? this.maxHits,
+      minTurns: minTurns ?? this.minTurns,
+      maxTurns: maxTurns ?? this.maxTurns,
+      statChance: statChance ?? this.statChance,
+      flinchChance: flinchChance ?? this.flinchChance,
+      targetsSelf: targetsSelf ?? this.targetsSelf,
     );
   }
 }

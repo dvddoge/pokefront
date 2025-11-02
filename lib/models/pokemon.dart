@@ -2,6 +2,30 @@ import 'dart:math' as math;
 
 import 'status_condition.dart';
 
+Map<String, int> _sanitizeStatStages(Map<String, int>? source) {
+  final defaultStages = <String, int>{
+    'attack': 0,
+    'defense': 0,
+    'special-attack': 0,
+    'special-defense': 0,
+    'speed': 0,
+    'accuracy': 0,
+    'evasion': 0,
+  };
+
+  if (source == null || source.isEmpty) {
+    return Map<String, int>.from(defaultStages);
+  }
+
+  final sanitized = Map<String, int>.from(defaultStages);
+  source.forEach((key, value) {
+    if (sanitized.containsKey(key)) {
+      sanitized[key] = value.clamp(-6, 6).toInt();
+    }
+  });
+  return sanitized;
+}
+
 class Pokemon {
   final int id;
   final String name;
@@ -17,6 +41,10 @@ class Pokemon {
   final int speed;
   final double? heightMeters;
   final double? weightKg;
+  final Map<String, int> statStages;
+  final int statusCounter;
+  final String ability;
+  final String? heldItem;
   final int baseHp;
   final int baseAttack;
   final int baseDefense;
@@ -46,6 +74,10 @@ class Pokemon {
     int? baseSpecialAttack,
     int? baseSpecialDefense,
     int? baseSpeed,
+    Map<String, int>? statStages,
+    int statusCounter = 0,
+    String ability = '',
+    String? heldItem,
     StatusCondition status = StatusCondition.none,
   }) {
     final effectiveBaseHp = baseHp ?? maxHp?.toInt() ?? hp?.toInt() ?? 100;
@@ -70,6 +102,7 @@ class Pokemon {
         _calculateOtherStat(effectiveBaseSpecialDefense, level);
     final computedSpeed =
         speed ?? _calculateOtherStat(effectiveBaseSpeed, level);
+    final Map<String, int> sanitizedStages = _sanitizeStatStages(statStages);
 
     return Pokemon._(
       id: id,
@@ -92,6 +125,10 @@ class Pokemon {
       baseSpecialAttack: effectiveBaseSpecialAttack,
       baseSpecialDefense: effectiveBaseSpecialDefense,
       baseSpeed: effectiveBaseSpeed,
+      statStages: Map<String, int>.unmodifiable(sanitizedStages),
+      statusCounter: statusCounter,
+      ability: ability,
+      heldItem: heldItem,
       status: status,
     );
   }
@@ -117,10 +154,30 @@ class Pokemon {
     required this.baseSpecialAttack,
     required this.baseSpecialDefense,
     required this.baseSpeed,
+    required this.statStages,
+    required this.statusCounter,
+    required this.ability,
+    required this.heldItem,
     required this.status,
   });
 
   String get primaryType => types.isNotEmpty ? types.first : 'normal';
+
+  int get totalBaseStats =>
+      baseHp +
+      baseAttack +
+      baseDefense +
+      baseSpecialAttack +
+      baseSpecialDefense +
+      baseSpeed;
+
+  int get totalStats =>
+      hp.toInt() +
+      attack +
+      defense +
+      specialAttack +
+      specialDefense +
+      speed;
 
   static int _calculateHp(int base, int level, {int iv = 31, int ev = 0}) {
     return (((2 * base + iv + (ev ~/ 4)) * level) ~/ 100) + level + 10;
@@ -159,6 +216,10 @@ class Pokemon {
     int? baseSpecialAttack,
     int? baseSpecialDefense,
     int? baseSpeed,
+    Map<String, int>? statStages,
+    int? statusCounter,
+    String? ability,
+    String? heldItem,
     StatusCondition? status,
   }) {
     final updatedLevel = level ?? this.level;
@@ -204,6 +265,9 @@ class Pokemon {
     final recalculatedSpeed = shouldRecalculateStats
         ? _calculateOtherStat(updatedBaseSpeed, updatedLevel)
         : (speed ?? this.speed);
+    final Map<String, int> updatedStatStages = statStages != null
+        ? Map<String, int>.unmodifiable(_sanitizeStatStages(statStages))
+        : this.statStages;
 
     return Pokemon._(
       id: id ?? this.id,
@@ -226,6 +290,10 @@ class Pokemon {
       baseSpecialAttack: updatedBaseSpecialAttack,
       baseSpecialDefense: updatedBaseSpecialDefense,
       baseSpeed: updatedBaseSpeed,
+      statStages: updatedStatStages,
+      statusCounter: statusCounter ?? this.statusCounter,
+      ability: ability ?? this.ability,
+      heldItem: heldItem ?? this.heldItem,
       status: status ?? this.status,
     );
   }
@@ -252,6 +320,10 @@ class Pokemon {
       'baseSpecialAttack': baseSpecialAttack,
       'baseSpecialDefense': baseSpecialDefense,
       'baseSpeed': baseSpeed,
+      'statStages': Map<String, int>.from(statStages),
+      'statusCounter': statusCounter,
+      'ability': ability,
+      'heldItem': heldItem,
       'status': status.name,
     };
   }
@@ -311,6 +383,18 @@ class Pokemon {
       } catch (_) {}
     }
 
+    String ability = '';
+    final abilities = json['abilities'] as List?;
+    if (abilities != null && abilities.isNotEmpty) {
+      ability = (abilities.first['ability']?['name'] as String?) ?? '';
+    }
+
+    String? heldItem;
+    final heldItems = json['held_items'] as List?;
+    if (heldItems != null && heldItems.isNotEmpty) {
+      heldItem = heldItems.first['item']?['name'] as String?;
+    }
+
     final baseHp = getStat('hp');
     final baseAttack = getStat('attack');
     final baseDefense = getStat('defense');
@@ -332,6 +416,8 @@ class Pokemon {
       baseSpeed: baseSpeed,
       heightMeters: height,
       weightKg: weight,
+      ability: ability,
+      heldItem: heldItem,
     );
   }
 
@@ -360,6 +446,15 @@ class Pokemon {
       baseSpecialDefense: json['baseSpecialDefense'],
       baseSpeed: json['baseSpeed'],
       status: StatusConditionX.fromName(json['status'] as String?),
+      statStages: (json['statStages'] as Map?)
+          ?.map<String, int>((key, value) {
+        final statName = key is String ? key : key.toString();
+        final statValue = value is num ? value.toInt() : 0;
+        return MapEntry(statName, statValue);
+      }),
+      statusCounter: (json['statusCounter'] as num?)?.toInt() ?? 0,
+      ability: json['ability'] as String? ?? '',
+      heldItem: json['heldItem'] as String?,
     );
   }
 }

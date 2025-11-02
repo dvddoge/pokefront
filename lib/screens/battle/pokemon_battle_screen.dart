@@ -53,6 +53,13 @@ class BattleAction {
   final int? switchIndex;
 }
 
+class _BindingEffect {
+  _BindingEffect({required this.remainingTurns, required this.damageFraction});
+
+  int remainingTurns;
+  final double damageFraction;
+}
+
 class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     with TickerProviderStateMixin {
   final AudioService _audioService = AudioService();
@@ -73,6 +80,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   int _opponentActiveIndex = 0;
   final Map<int, List<PokemonMove>> _movesCache = {};
   final Map<int, List<int>> _ppTracker = {};
+  final math.Random _random = math.Random();
+  final Map<int, _BindingEffect> _bindingEffects = {};
+  final Map<int, int> _confusionCounters = {};
+  final Set<int> _flinchNextTurn = {};
   bool _isResolvingTurn = false;
   bool isAnimating = false;
   bool isLoading = true;
@@ -147,9 +158,6 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     return team;
   }
 
-  Pokemon get _playerActive => _playerTeam[_playerActiveIndex];
-  Pokemon get _opponentActive => _opponentTeam[_opponentActiveIndex];
-
   List<PokemonMove> _movesFor(Pokemon pokemon) {
     return _movesCache[pokemon.id] ?? PokemonMoveService.getDefaultMoves();
   }
@@ -165,6 +173,12 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
       return detailed.copyWith(
         level: pokemon.level,
         status: pokemon.status,
+        statusCounter: pokemon.statusCounter,
+        hp: pokemon.hp,
+        maxHp: pokemon.maxHp,
+        statStages: pokemon.statStages,
+        ability: detailed.ability.isNotEmpty ? detailed.ability : pokemon.ability,
+        heldItem: detailed.heldItem ?? pokemon.heldItem,
       );
     } catch (_) {
       return pokemon;
@@ -175,6 +189,305 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     return actor == BattleActor.player
         ? BattleActor.opponent
         : BattleActor.player;
+  }
+
+  bool _hasAbility(Pokemon pokemon, String ability) {
+    return pokemon.ability.toLowerCase() == ability.toLowerCase();
+  }
+
+  bool _blocksSecondaryEffects(Pokemon pokemon) {
+    return _hasAbility(pokemon, 'shield-dust');
+  }
+
+  Pokemon get _playerActive => _playerTeam[_playerActiveIndex];
+  Pokemon get _opponentActive => _opponentTeam[_opponentActiveIndex];
+
+  void _updateActivePokemon(BattleActor actor, Pokemon updated) {
+    if (actor == BattleActor.player) {
+      _playerTeam[_playerActiveIndex] = updated;
+    } else {
+      _opponentTeam[_opponentActiveIndex] = updated;
+    }
+  }
+
+  void _log(String message) {
+    setState(() {
+      battleLog = message;
+    });
+  }
+
+  void _setStatus(
+    BattleActor actor,
+    StatusCondition status, {
+    int counter = 0,
+    String? message,
+  }) {
+    setState(() {
+      final current =
+          actor == BattleActor.player ? _playerActive : _opponentActive;
+      final updated = current.copyWith(status: status, statusCounter: counter);
+      _updateActivePokemon(actor, updated);
+      if (message != null && message.isNotEmpty) {
+        battleLog = message;
+      }
+    });
+  }
+
+  void _setStatusCounter(BattleActor actor, int counter) {
+    final current = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final updated = current.copyWith(statusCounter: counter);
+    setState(() {
+      _updateActivePokemon(actor, updated);
+    });
+  }
+
+  String _formatStatName(String stat) {
+    switch (stat) {
+      case 'attack':
+        return 'ataque';
+      case 'defense':
+        return 'defesa';
+      case 'special-attack':
+        return 'ataque especial';
+      case 'special-defense':
+        return 'defesa especial';
+      case 'speed':
+        return 'velocidade';
+      case 'accuracy':
+        return 'precisão';
+      case 'evasion':
+        return 'evasão';
+      default:
+        return stat;
+    }
+  }
+
+  String _statusDescription(StatusCondition status) {
+    switch (status) {
+      case StatusCondition.burn:
+        return 'sofreu uma queimadura';
+      case StatusCondition.paralysis:
+        return 'ficou paralisado';
+      case StatusCondition.poison:
+        return 'foi envenenado';
+      case StatusCondition.toxic:
+        return 'foi gravemente envenenado';
+      case StatusCondition.sleep:
+        return 'adormeceu';
+      case StatusCondition.freeze:
+        return 'foi congelado';
+      case StatusCondition.none:
+        return 'está saudável';
+    }
+  }
+
+  Future<void> _healPokemon(
+    BattleActor actor,
+    double amount, {
+    String? reason,
+  }) async {
+    if (amount <= 0) return;
+    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    if (pokemon.hp <= 0 || pokemon.hp >= pokemon.maxHp) {
+      if (reason != null && reason.isNotEmpty) {
+        _log(reason);
+      }
+      return;
+    }
+
+    final newHp = (pokemon.hp + amount).clamp(0, pokemon.maxHp).toDouble();
+    final healed = newHp - pokemon.hp;
+    if (healed <= 0) {
+      if (reason != null && reason.isNotEmpty) {
+        _log(reason);
+      }
+      return;
+    }
+
+    setState(() {
+      final updated = pokemon.copyWith(hp: newHp);
+      _updateActivePokemon(actor, updated);
+      if (reason != null && reason.isNotEmpty) {
+        battleLog = reason;
+      } else {
+        battleLog = '${pokemon.name} recuperou ${healed.toInt()} HP!';
+      }
+    });
+
+    await Future.delayed(const Duration(milliseconds: 200));
+  }
+
+  String? _statusImmunityMessage(Pokemon pokemon, StatusCondition status) {
+    final types = pokemon.types.map((t) => t.toLowerCase()).toList();
+    final ability = pokemon.ability.toLowerCase();
+
+    if (pokemon.status != StatusCondition.none && status != StatusCondition.none) {
+      return '${pokemon.name} já possui uma condição de status.';
+    }
+
+    switch (status) {
+      case StatusCondition.burn:
+        if (types.contains('fire') || ability == 'water-veil' || ability == 'flash-fire') {
+          return '${pokemon.name} é imune a queimaduras.';
+        }
+        break;
+      case StatusCondition.paralysis:
+        if (types.contains('electric') || ability == 'limber') {
+          return '${pokemon.name} não pode ser paralisado.';
+        }
+        break;
+      case StatusCondition.poison:
+        if (types.contains('poison') || types.contains('steel') ||
+            ability == 'immunity') {
+          return '${pokemon.name} não pode ser envenenado.';
+        }
+        break;
+      case StatusCondition.toxic:
+        if (types.contains('poison') || types.contains('steel') ||
+            ability == 'immunity') {
+          return '${pokemon.name} não pode ser gravemente envenenado.';
+        }
+        break;
+      case StatusCondition.sleep:
+        if (ability == 'insomnia' || ability == 'vital-spirit') {
+          return '${pokemon.name} não pode adormecer.';
+        }
+        break;
+      case StatusCondition.freeze:
+        if (types.contains('ice') || ability == 'magma-armor') {
+          return '${pokemon.name} não pode ser congelado.';
+        }
+        break;
+      case StatusCondition.none:
+        return null;
+    }
+
+    return null;
+  }
+
+  void _changeStatStage(BattleActor actor, String stat, int delta) {
+    final current = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final stages = Map<String, int>.from(current.statStages);
+    final currentValue = stages[stat] ?? 0;
+    final newStage = (currentValue + delta).clamp(-6, 6);
+
+    if (newStage == currentValue) {
+      final message = delta > 0
+          ? '${current.name} não pode aumentar mais ${_formatStatName(stat)}.'
+          : '${current.name} não pode reduzir mais ${_formatStatName(stat)}.';
+      _log(message);
+      return;
+    }
+
+    stages[stat] = newStage;
+    setState(() {
+      final updated = current.copyWith(statStages: stages);
+      _updateActivePokemon(actor, updated);
+      battleLog = delta > 0
+          ? '${current.name} aumentou ${_formatStatName(stat)}!'
+          : '${current.name} teve ${_formatStatName(stat)} reduzido!';
+    });
+  }
+
+  void _applyStatChanges(
+    PokemonMove move,
+    BattleActor attackerActor,
+    BattleActor defenderActor,
+  ) {
+    if (move.statChanges.isEmpty) return;
+    if (move.statChance < 1.0 && _random.nextDouble() > move.statChance) {
+      return;
+    }
+
+    move.statChanges.forEach((stat, change) {
+      if (change == 0) return;
+      final targetActor = move.targetsSelf
+          ? attackerActor
+          : defenderActor;
+      _changeStatStage(targetActor, stat, change);
+    });
+  }
+
+  int _determineHits(PokemonMove move) {
+    final minHits = move.minHits ?? 1;
+    final maxHits = move.maxHits ?? minHits;
+    if (maxHits <= minHits) return minHits;
+    return _random.nextInt(maxHits - minHits + 1) + minHits;
+  }
+
+  Future<bool> _handleAbilityPreHit(
+    BattleActor defenderActor,
+    PokemonMove move,
+  ) async {
+    final defender =
+        defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+    final ability = defender.ability.toLowerCase();
+    if (ability.isEmpty) return false;
+
+    if (ability == 'levitate' && move.type == 'ground') {
+      _log('${defender.name} evitou o ataque graças a Levitate!');
+      return true;
+    }
+
+    if (ability == 'water-absorb' && move.type == 'water') {
+      await _healPokemon(
+        defenderActor,
+        defender.maxHp * 0.25,
+        reason: '${defender.name} absorveu o ataque de água!',
+      );
+      return true;
+    }
+
+    if (ability == 'volt-absorb' && move.type == 'electric') {
+      await _healPokemon(
+        defenderActor,
+        defender.maxHp * 0.25,
+        reason: '${defender.name} converteu o ataque elétrico em energia!',
+      );
+      return true;
+    }
+
+    if (ability == 'flash-fire' && move.type == 'fire') {
+      _log('${defender.name} absorveu o fogo com Flash Fire!');
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<void> _checkItemAfterDamage(BattleActor actor) async {
+    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final item = pokemon.heldItem?.toLowerCase();
+    if (item == null || item.isEmpty) return;
+
+    if (item == 'sitrus-berry' &&
+        pokemon.hp > 0 &&
+        pokemon.hp <= pokemon.maxHp * 0.5) {
+      final healAmount = pokemon.maxHp * 0.25;
+      setState(() {
+        final updated = pokemon.copyWith(heldItem: null);
+        _updateActivePokemon(actor, updated);
+      });
+      await _healPokemon(
+        actor,
+        healAmount,
+        reason: '${pokemon.name} recuperou forças com a Sitrus Berry!',
+      );
+    }
+  }
+
+  Future<void> _handleEndTurnItems(BattleActor actor) async {
+    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final item = pokemon.heldItem?.toLowerCase();
+    if (item == null || item.isEmpty || pokemon.hp <= 0) return;
+
+    if (item == 'leftovers' && pokemon.hp < pokemon.maxHp) {
+      await _healPokemon(
+        actor,
+        pokemon.maxHp / 16,
+        reason: '${pokemon.name} recuperou um pouco de HP com Restos.',
+      );
+    }
   }
 
   Future<void> _startBattleMusic() async {
@@ -234,6 +547,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
       }));
 
       if (!mounted) return;
+
+      _bindingEffects.clear();
+      _confusionCounters.clear();
+      _flinchNextTurn.clear();
 
       setState(() {
         _playerTeam = hydratedPlayerTeam;
@@ -427,7 +744,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     final opponentEffectiveSpeed = _effectiveSpeed(_opponentActive);
 
     if (playerEffectiveSpeed == opponentEffectiveSpeed) {
-      return math.Random().nextBool()
+      return _random.nextBool()
           ? const [BattleActor.player, BattleActor.opponent]
           : const [BattleActor.opponent, BattleActor.player];
     }
@@ -442,7 +759,11 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     if (pokemon.status == StatusCondition.paralysis) {
       speed = (speed * 0.5).floor();
     }
-    return speed;
+    final stage = pokemon.statStages['speed'] ?? 0;
+    final modifier = stage >= 0
+        ? (2 + stage) / 2.0
+        : 2.0 / (2 - stage);
+    return (speed * modifier).floor();
   }
 
   bool _hasAvailableSwitch(bool isPlayer) {
@@ -473,6 +794,11 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<void> _performSwitch(bool isPlayer, int newIndex) async {
+    final leavingPokemon = isPlayer ? _playerActive : _opponentActive;
+    _bindingEffects.remove(leavingPokemon.id);
+    _confusionCounters.remove(leavingPokemon.id);
+    _flinchNextTurn.remove(leavingPokemon.id);
+
     setState(() {
       battleLog =
           '${isPlayer ? _playerActive.name : _opponentActive.name} foi retirado!';
@@ -494,55 +820,116 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<bool> _performMove(bool isPlayer, PokemonMove move) async {
-    final attacker = isPlayer ? _playerActive : _opponentActive;
-    final defenderActor = _opposite(isPlayer ? BattleActor.player : BattleActor.opponent);
-    final defender = isPlayer ? _opponentActive : _playerActive;
+    final attackerActor = isPlayer ? BattleActor.player : BattleActor.opponent;
+    final defenderActor = _opposite(attackerActor);
+    final initialAttacker = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
 
-    if (_consumePp(attacker, move) == false) {
+    if (!_consumePp(initialAttacker, move)) {
       return false;
     }
 
-    if (!_canAct(attacker)) {
-      setState(() {
-        battleLog = '${attacker.name} está incapacitado!';
-      });
+    if (!await _canAct(attackerActor)) {
       return true;
     }
 
-    setState(() {
-      battleLog = '${attacker.name} usa ${move.name}!';
-    });
+    _log('${initialAttacker.name} usa ${move.name}!');
 
     await _attackAnimationController.forward();
     _attackAnimationController.reset();
 
-    final hit = BattleService.checkHitSuccess(move.accuracy);
-    if (!hit) {
-      setState(() {
-        battleLog = 'O ataque de ${attacker.name} errou!';
-      });
+    if (!BattleService.checkHitSuccess(move.accuracy)) {
+      _log('O ataque de ${initialAttacker.name} errou!');
       return true;
     }
 
-    final damage = BattleService.calculateDamage(
-      move: move,
-      attacker: attacker,
-      defender: defender,
-      attackerStatus: attacker.status,
-    );
+    if (await _handleAbilityPreHit(defenderActor, move)) {
+      return true;
+    }
 
-    if (damage > 0) {
-      await _applyDamage(
+    final hits = _determineHits(move);
+    double totalDamage = 0;
+    bool flinchApplied = false;
+
+    for (var i = 0; i < hits; i++) {
+      final attacker = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      final defender = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+
+      final damage = BattleService.calculateDamage(
+        move: move,
+        attacker: attacker,
+        defender: defender,
+        attackerStatus: attacker.status,
+      );
+
+      if (damage <= 0) {
+        break;
+      }
+
+      final inflicted = await _applyDamage(
         defenderActor,
         damage,
         attacker: attacker,
         moveName: move.name,
+        moveType: move.type,
       );
-    } else if (move.healPercent != null && move.healPercent! > 0) {
-      await _applyHealing(attacker, move.healPercent!);
+
+      totalDamage += inflicted;
+
+      final defenderAfter = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+      if (!flinchApplied &&
+          move.flinchChance != null &&
+          move.flinchChance! > 0 &&
+          defenderAfter.hp > 0) {
+        final roll = _random.nextDouble();
+        if (roll < move.flinchChance!) {
+          if (_hasAbility(defenderAfter, 'inner-focus')) {
+            _log('${defenderAfter.name} manteve o foco e não se abalou!');
+          } else if (_blocksSecondaryEffects(defenderAfter)) {
+            _log('${defenderAfter.name} ignorou o efeito adicional graças a Shield Dust!');
+          } else {
+            _flinchNextTurn.add(defenderAfter.id);
+            _log('${defenderAfter.name} ficou atordoado!');
+          }
+          flinchApplied = true;
+        }
+      }
+      if (defenderAfter.hp <= 0) {
+        break;
+      }
     }
 
-    _applyAilment(move, defenderActor);
+    if (move.healPercent != null && move.healPercent! > 0) {
+      final healer = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      await _healPokemon(
+        attackerActor,
+        healer.maxHp * move.healPercent!,
+        reason: '${healer.name} recuperou energia!',
+      );
+    }
+
+    if (totalDamage > 0 && move.drain != null) {
+      final lifesteal = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      await _healPokemon(
+        attackerActor,
+        totalDamage * move.drain!,
+        reason: '${lifesteal.name} drenou vida do adversário!',
+      );
+    }
+
+    if (totalDamage > 0 && move.recoil != null) {
+      final recoilTarget = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      await _applyDamage(
+        attackerActor,
+        totalDamage * move.recoil!,
+        attacker: recoilTarget,
+        moveName: 'recuo',
+        suppressLog: true,
+      );
+      _log('${recoilTarget.name} sofreu dano de recuo!');
+    }
+
+    _applyStatChanges(move, attackerActor, defenderActor);
+    _applyAilment(move, attackerActor, defenderActor);
 
     return true;
   }
@@ -562,21 +949,84 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     return true;
   }
 
-  bool _canAct(Pokemon pokemon) {
-    if (pokemon.status == StatusCondition.paralysis) {
-      return math.Random().nextDouble() > 0.25;
+  Future<bool> _canAct(BattleActor actor) async {
+    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemonId = pokemon.id;
+
+    if (_flinchNextTurn.remove(pokemonId)) {
+      _log('${pokemon.name} recuou e não conseguiu agir!');
+      return false;
     }
-    return true;
+
+    if (_confusionCounters.containsKey(pokemonId)) {
+      final remaining = _confusionCounters[pokemonId] ?? 0;
+      final selfHit = _random.nextDouble() < 0.33;
+      final newRemaining = remaining - 1;
+
+      if (newRemaining <= 0) {
+        _confusionCounters.remove(pokemonId);
+        _log('${pokemon.name} se recuperou da confusão!');
+      } else {
+        _confusionCounters[pokemonId] = newRemaining;
+        _log('${pokemon.name} está confuso!');
+      }
+
+      if (selfHit) {
+        final damage = (pokemon.maxHp / 8).clamp(1, pokemon.maxHp).toDouble();
+        await _applyDamage(
+          actor,
+          damage,
+          moveName: 'confusão',
+          suppressLog: true,
+        );
+        _log('${pokemon.name} se machucou na confusão!');
+        return false;
+      }
+    }
+
+    switch (pokemon.status) {
+      case StatusCondition.sleep:
+        if (pokemon.statusCounter <= 0) {
+          _setStatus(actor, StatusCondition.none,
+              message: '${pokemon.name} acordou!');
+          return true;
+        }
+        _setStatusCounter(actor, pokemon.statusCounter - 1);
+        _log('${pokemon.name} está dormindo.');
+        return false;
+      case StatusCondition.freeze:
+        if (_random.nextDouble() < 0.2) {
+          _setStatus(actor, StatusCondition.none,
+              message: '${pokemon.name} descongelou!');
+          return true;
+        }
+        _log('${pokemon.name} está congelado e não pode atacar!');
+        return false;
+      case StatusCondition.paralysis:
+        if (_random.nextDouble() < 0.25) {
+          _log('${pokemon.name} está paralisado e não se moveu!');
+          return false;
+        }
+        return true;
+      case StatusCondition.burn:
+      case StatusCondition.poison:
+      case StatusCondition.toxic:
+      case StatusCondition.none:
+        return true;
+    }
   }
 
-  Future<void> _applyDamage(
+  Future<double> _applyDamage(
     BattleActor defenderActor,
     double damage, {
     Pokemon? attacker,
     String? moveName,
+    String? moveType,
+    bool suppressLog = false,
   }) async {
     final isPlayer = defenderActor == BattleActor.player;
     final defender = isPlayer ? _playerActive : _opponentActive;
+    final inflicted = math.min(damage, defender.hp);
     final newHp = (defender.hp - damage).clamp(0, defender.maxHp).toDouble();
 
     final attackerName = attacker?.name ??
@@ -584,89 +1034,220 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     final logMoveName = moveName ?? '';
 
     setState(() {
-      if (isPlayer) {
-        _playerTeam[_playerActiveIndex] =
-            defender.copyWith(hp: newHp.toDouble());
-      } else {
-        _opponentTeam[_opponentActiveIndex] =
-            defender.copyWith(hp: newHp.toDouble());
+      final updated = defender.copyWith(hp: newHp);
+      _updateActivePokemon(defenderActor, updated);
+      if (!suppressLog) {
+        battleLog = BattleService.generateBattleLog(
+          attackerName: attackerName,
+          moveName: logMoveName,
+          isHit: true,
+          damage: damage,
+          remainingHP: newHp,
+          maxHP: defender.maxHp,
+        );
       }
-      battleLog = BattleService.generateBattleLog(
-        attackerName: attackerName,
-        moveName: logMoveName,
-        isHit: true,
-        damage: damage,
-        remainingHP: newHp,
-        maxHP: defender.maxHp,
-      );
     });
 
     await _shakeAnimationController.forward();
     _shakeAnimationController.reset();
-  }
 
-  Future<void> _applyHealing(Pokemon attacker, double healPercent) async {
-    final healedAmount = (attacker.maxHp * healPercent)
-        .clamp(1, attacker.maxHp)
-        .toDouble();
-    final newHp = (attacker.hp + healedAmount)
-        .clamp(0, attacker.maxHp)
-        .toDouble();
-
-    setState(() {
-      if (_playerActive.id == attacker.id) {
-        _playerTeam[_playerActiveIndex] =
-            attacker.copyWith(hp: newHp);
-      } else if (_opponentActive.id == attacker.id) {
-        _opponentTeam[_opponentActiveIndex] =
-            attacker.copyWith(hp: newHp);
+    if (moveType == 'fire') {
+      final current = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+      if (current.status == StatusCondition.freeze) {
+        _setStatus(defenderActor, StatusCondition.none,
+            message: '${current.name} descongelou!');
       }
-      battleLog =
-          '${attacker.name} recuperou ${healedAmount.toInt()} HP!';
-    });
+    }
 
-    await Future.delayed(const Duration(milliseconds: 300));
+    await _checkItemAfterDamage(defenderActor);
+
+    if (newHp <= 0) {
+      _bindingEffects.remove(defender.id);
+      _confusionCounters.remove(defender.id);
+      _flinchNextTurn.remove(defender.id);
+    }
+
+    return inflicted;
   }
 
-  void _applyAilment(PokemonMove move, BattleActor targetActor) {
+  void _applyAilment(
+    PokemonMove move,
+    BattleActor attackerActor,
+    BattleActor targetActor,
+  ) {
     if (move.ailment == null || move.ailment == 'none') return;
     if (move.ailmentChance <= 0) return;
+    if (_random.nextDouble() > move.ailmentChance) return;
 
-    if (math.Random().nextDouble() > move.ailmentChance) return;
+    final effectActor = move.targetsSelf ? attackerActor : targetActor;
+    final target = effectActor == BattleActor.player ? _playerActive : _opponentActive;
 
-    final target = targetActor == BattleActor.player ? _playerActive : _opponentActive;
-    if (target.status != StatusCondition.none) return;
+    if (!move.targetsSelf && _blocksSecondaryEffects(target)) {
+      _log('${target.name} ignorou o efeito adicional graças a Shield Dust!');
+      return;
+    }
+
+    if (move.ailment == 'trap') {
+      _applyBindingEffect(effectActor, move);
+      return;
+    }
+
+    if (move.ailment == 'confusion') {
+      _applyConfusion(effectActor);
+      return;
+    }
 
     final ailment = StatusConditionX.fromName(move.ailment);
-    final updated = target.copyWith(status: ailment);
+    if (ailment == StatusCondition.none) {
+      return;
+    }
+    final immunityMessage = _statusImmunityMessage(target, ailment);
+    if (immunityMessage != null) {
+      _log(immunityMessage);
+      return;
+    }
 
-    setState(() {
-      if (targetActor == BattleActor.player) {
-        _playerTeam[_playerActiveIndex] = updated;
-      } else {
-        _opponentTeam[_opponentActiveIndex] = updated;
-      }
-      battleLog = '${target.name} foi afetado por ${ailment.name}!';
-    });
+    int counter = 0;
+    switch (ailment) {
+      case StatusCondition.sleep:
+        counter = _random.nextInt(3) + 1;
+        break;
+      case StatusCondition.toxic:
+        counter = 1;
+        break;
+      default:
+        counter = 0;
+    }
+
+    final description = _statusDescription(ailment);
+    _setStatus(
+      effectActor,
+      ailment,
+      counter: counter,
+      message: '${target.name} $description!',
+    );
+  }
+
+  void _applyBindingEffect(BattleActor targetActor, PokemonMove move) {
+    final target = targetActor == BattleActor.player ? _playerActive : _opponentActive;
+    final minTurns = (move.minTurns ?? 4).clamp(1, 10);
+    final maxTurns = (move.maxTurns ?? minTurns).clamp(minTurns, minTurns + 4);
+    final turns = maxTurns > minTurns
+        ? _random.nextInt(maxTurns - minTurns + 1) + minTurns
+        : minTurns;
+
+    _bindingEffects[target.id] =
+        _BindingEffect(remainingTurns: turns, damageFraction: 1 / 16);
+    _log('${target.name} ficou preso pelo ataque!');
+  }
+
+  void _applyConfusion(BattleActor targetActor) {
+    final target = targetActor == BattleActor.player ? _playerActive : _opponentActive;
+    if (_hasAbility(target, 'own-tempo')) {
+      _log('${target.name} manteve o ritmo e evitou a confusão!');
+      return;
+    }
+
+    final turns = _random.nextInt(4) + 1;
+    _confusionCounters[target.id] = turns;
+    _log('${target.name} ficou confuso!');
   }
 
   Future<void> _applyEndOfTurnEffects() async {
     await _applyResidualStatus(BattleActor.player);
     await _applyResidualStatus(BattleActor.opponent);
+    await _applyBindingEffects();
+    await _handleEndTurnItems(BattleActor.player);
+    await _handleEndTurnItems(BattleActor.opponent);
     _checkBattleEnd();
+  }
+
+  Future<void> _applyBindingEffects() async {
+    final affectedIds = List<int>.from(_bindingEffects.keys);
+    for (final id in affectedIds) {
+      BattleActor? actor;
+      if (_playerActive.id == id) {
+        actor = BattleActor.player;
+      } else if (_opponentActive.id == id) {
+        actor = BattleActor.opponent;
+      } else {
+        _bindingEffects.remove(id);
+        continue;
+      }
+
+      final effect = _bindingEffects[id];
+      if (effect == null) continue;
+
+      final pokemon =
+          actor == BattleActor.player ? _playerActive : _opponentActive;
+      if (pokemon.hp <= 0) {
+        _bindingEffects.remove(id);
+        continue;
+      }
+
+      final damage =
+          (pokemon.maxHp * effect.damageFraction).clamp(1, pokemon.maxHp).toDouble();
+      await _applyDamage(
+        actor,
+        damage,
+        moveName: 'dano contínuo',
+        suppressLog: true,
+      );
+      _log('${pokemon.name} sofre com a restrição!');
+
+      effect.remainingTurns -= 1;
+      if (effect.remainingTurns <= 0 || pokemon.hp <= 0) {
+        _bindingEffects.remove(id);
+        if (pokemon.hp > 0) {
+          _log('${pokemon.name} se libertou!');
+        }
+      } else {
+        _bindingEffects[id] = effect;
+      }
+    }
   }
 
   Future<void> _applyResidualStatus(BattleActor actor) async {
     final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
     if (pokemon.status == StatusCondition.none || pokemon.hp <= 0) return;
 
+    if (pokemon.status == StatusCondition.poison &&
+        (_hasAbility(pokemon, 'poison-heal'))) {
+      await _healPokemon(
+        actor,
+        pokemon.maxHp / 8,
+        reason: '${pokemon.name} recuperou HP com Poison Heal!',
+      );
+      return;
+    }
+
+    if (pokemon.status == StatusCondition.toxic) {
+      final stage = pokemon.statusCounter <= 0 ? 1 : pokemon.statusCounter;
+      final residual =
+          (pokemon.maxHp / 16 * stage).clamp(1, pokemon.maxHp).toDouble();
+      await _applyDamage(
+        actor,
+        residual,
+        moveName: 'veneno severo',
+        suppressLog: true,
+      );
+      _log('${pokemon.name} sofre com o veneno severo!');
+      _setStatusCounter(actor, stage + 1);
+      return;
+    }
+
     if (pokemon.status == StatusCondition.burn ||
         pokemon.status == StatusCondition.poison) {
       final residual = (pokemon.maxHp / 16).clamp(1, pokemon.maxHp).toDouble();
-      await _applyDamage(actor, residual);
-      setState(() {
-        battleLog = '${pokemon.name} sofre com ${pokemon.status.name}!';
-      });
+      await _applyDamage(
+        actor,
+        residual,
+        moveName: 'dano residual',
+        suppressLog: true,
+      );
+      final statusText =
+          pokemon.status == StatusCondition.burn ? 'a queimadura' : 'o veneno';
+      _log('${pokemon.name} sofre com $statusText!');
     }
   }
 
