@@ -1,8 +1,11 @@
 import 'dart:math' as math;
 import '../../../models/pokemon.dart';
 import '../../../models/pokemon_move.dart';
+import '../../../models/status_condition.dart';
 
 class BattleService {
+  static final math.Random _random = math.Random();
+
   // Mapa de eficácia de tipos
   static final Map<String, Map<String, double>> _typeEffectiveness = {
     'normal': {'rock': 0.5, 'ghost': 0, 'steel': 0.5},
@@ -33,41 +36,56 @@ class BattleService {
     return effectiveness;
   }
 
-  static double calculateDamage(
-    PokemonMove move,
-    Pokemon attacker,
-    Pokemon defender,
-  ) {
-    if (move.damage <= 0) return 0;
+  static double calculateDamage({
+    required PokemonMove move,
+    required Pokemon attacker,
+    required Pokemon defender,
+    StatusCondition attackerStatus = StatusCondition.none,
+  }) {
+    final power = move.power ?? 0;
+    if (power <= 0) return 0;
 
     // Fórmula de dano: https://bulbapedia.bulbagarden.net/wiki/Damage
     final double level = attacker.level.toDouble();
-    final double power = move.damage.toDouble();
-    final double attack = move.damageClass == 'physical' ? attacker.attack.toDouble() : attacker.specialAttack.toDouble();
-    final double defense = move.damageClass == 'physical' ? defender.defense.toDouble() : defender.specialDefense.toDouble();
-    
+    double attack = move.damageClass == 'physical'
+        ? attacker.attack.toDouble()
+        : attacker.specialAttack.toDouble();
+    final double defense = move.damageClass == 'physical'
+        ? defender.defense.toDouble()
+        : defender.specialDefense.toDouble();
+
+    if (move.damageClass == 'physical' &&
+        attackerStatus == StatusCondition.burn) {
+      attack *= 0.5;
+    }
+
     // Modificadores
     const double targets = 1.0; // Batalha 1v1
     const double weather = 1.0; // Não implementado
     const double badge = 1.0;   // Não implementado
-    final double critical = (math.Random().nextDouble() < 0.0625) ? 1.5 : 1.0;
-    final double random = (math.Random().nextInt(16) + 85) / 100.0; // Variação de 85% a 100%
-    final double stab = attacker.types.contains(move.type) ? 1.5 : 1.0; // Same-type attack bonus
-    final double typeEffectiveness = _getEffectiveness(move.type, defender.types);
-    const double burn = 1.0; // Não implementado
+    final double critical = (_random.nextDouble() < 0.0625) ? 1.5 : 1.0;
+    final double random =
+        (_random.nextInt(16) + 85) / 100.0; // Variação de 85% a 100%
+    final double stab = attacker.types.contains(move.type) ? 1.5 : 1.0;
+    final double typeEffectiveness =
+        _getEffectiveness(move.type, defender.types);
+    const double burn = 1.0;
     const double other = 1.0; // Outros modificadores
 
-    final double modifier = targets * weather * badge * critical * random * stab * typeEffectiveness * burn * other;
+    final double modifier = targets *
+        weather *
+        badge *
+        critical *
+        random *
+        stab *
+        typeEffectiveness *
+        burn *
+        other;
 
-    final double damage = (((((2 * level) / 5) + 2) * power * (attack / defense)) / 50) + 2;
-    
-  double finalDamage = damage * modifier;
+    final double baseDamage =
+        (((((2 * level) / 5) + 2) * power * (attack / defense)) / 50) + 2;
 
-  // Pequeno ajuste baseado em diferença de velocidade (valoriza Speed de forma sutil)
-  // Máx ±10% de variação
-  final speedDiff = (attacker.speed - defender.speed).toDouble();
-  final speedFactor = (speedDiff / 200).clamp(-0.1, 0.1);
-  finalDamage *= (1 + speedFactor);
+    final double finalDamage = baseDamage * modifier;
 
     if (typeEffectiveness > 1) {
       print("É super efetivo!");
@@ -77,11 +95,14 @@ class BattleService {
       print("Não afeta o oponente...");
     }
 
-    return finalDamage < 1 && finalDamage > 0 ? 1 : finalDamage;
+    if (finalDamage < 1 && finalDamage > 0) {
+      return 1;
+    }
+    return finalDamage;
   }
 
   static bool checkHitSuccess(double accuracy) {
-    return math.Random().nextDouble() * 100 <= accuracy;
+    return _random.nextDouble() * 100 <= accuracy;
   }
 
   static PokemonMove selectAIMove(
@@ -90,8 +111,14 @@ class BattleService {
     Pokemon defender,
   ) {
     if (availableMoves.isEmpty) {
-      // Retorna um movimento padrão caso não hajam outros.
-      return const PokemonMove(name: "Struggle", damage: 50, type: "normal", accuracy: 100, damageClass: "physical");
+      return const PokemonMove(
+        name: 'Luta',
+        power: 50,
+        type: 'normal',
+        accuracy: 100,
+        damageClass: 'physical',
+        pp: 10,
+      );
     }
 
     PokemonMove? bestMove;
@@ -99,8 +126,11 @@ class BattleService {
 
     for (var move in availableMoves) {
       // Dano base simulado
-      final simulatedDamage = calculateDamage(move, attacker, defender);
-      // Precisão em 0..1
+      final simulatedDamage = calculateDamage(
+        move: move,
+        attacker: attacker,
+        defender: defender,
+      );
       final acc = (move.accuracy.clamp(0, 100)) / 100.0;
       // Bônus leve por STAB/efetividade (já incluso em calculateDamage, mas reforçamos a decisão)
       double typeBonus = 1.0;
@@ -117,7 +147,8 @@ class BattleService {
       }
     }
 
-    return bestMove ?? availableMoves[math.Random().nextInt(availableMoves.length)];
+    return bestMove ??
+        availableMoves[_random.nextInt(availableMoves.length)];
   }
 
   static String generateBattleLog({

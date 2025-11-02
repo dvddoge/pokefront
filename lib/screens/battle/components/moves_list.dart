@@ -4,12 +4,14 @@ import 'move_button.dart';
 
 class MovesList extends StatelessWidget {
   final List<PokemonMove> moves;
+  final List<int> remainingPP;
   final bool isDisabled;
   final Function(PokemonMove) onMoveSelected;
 
   const MovesList({
     Key? key,
     required this.moves,
+    required this.remainingPP,
     required this.isDisabled,
     required this.onMoveSelected,
   }) : super(key: key);
@@ -70,11 +72,19 @@ class MovesList extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.center,
-                children: moves.map((move) => MoveButton(
-                  move: move,
-                  isDisabled: isDisabled,
-                  onMoveSelected: onMoveSelected,
-                )).toList(),
+                children: List.generate(moves.length, (index) {
+                  final move = moves[index];
+                  final pp = index < remainingPP.length
+                      ? remainingPP[index]
+                      : move.pp;
+                  final buttonDisabled = isDisabled || pp <= 0;
+                  return MoveButton(
+                    move: move,
+                    isDisabled: buttonDisabled,
+                    remainingPP: pp,
+                    onMoveSelected: onMoveSelected,
+                  );
+                }),
               ),
             ),
           ),

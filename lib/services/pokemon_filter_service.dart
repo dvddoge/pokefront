@@ -9,7 +9,9 @@ class PokemonFilterService {
     required RangeValues powerRange,
     required Map<int, Map<String, int>> statsCache,
   }) {
-    if (selectedTypes.isEmpty && selectedGeneration == 0 && powerRange == const RangeValues(0, 1000)) {
+    if (selectedTypes.isEmpty &&
+        selectedGeneration == 0 &&
+        powerRange == const RangeValues(0, 1000)) {
       return true;
     }
 
@@ -18,11 +20,12 @@ class PokemonFilterService {
           .where((entry) => entry.value)
           .map((entry) => entry.key)
           .toList();
-      
-      bool hasAnySelectedType = selectedTypesList.any((selectedType) =>
-        pokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-      );
-      
+
+      bool hasAnySelectedType = selectedTypesList.any((selectedType) => pokemon
+          .types
+          .map((t) => t.toLowerCase())
+          .contains(selectedType.toLowerCase()));
+
       if (!hasAnySelectedType) return false;
     }
 
@@ -38,7 +41,8 @@ class PokemonFilterService {
           return false;
         }
       } else {
-        print("Excluindo ${pokemon.name} (ID: ${pokemon.id}) do filtro de poder por falta de stats no cache.");
+        print(
+            "Excluindo ${pokemon.name} (ID: ${pokemon.id}) do filtro de poder por falta de stats no cache.");
         return false;
       }
     }
@@ -61,6 +65,6 @@ class PokemonFilterService {
     if (pokemonId <= 809) return 7; // Gen 7
     if (pokemonId <= 898) return 8; // Gen 8
     // Assumindo que IDs > 898 são Gen 9 (ou posteriores, mas a API buscada vai até ~1000)
-    return 9; 
+    return 9;
   }
 }

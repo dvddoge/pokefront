@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
@@ -11,6 +12,7 @@ class PokemonListService {
   final Map<int, Map<String, int>> _statsCache = {};
   final Map<int, Pokemon> _pokemonCache = {};
   final Map<String, List<Pokemon>> _searchCache = {};
+  static final Map<String, Set<int>> _typePokemonCache = {};
 
   // Método para limpar todos os caches
   void clearAllCaches() {
@@ -34,38 +36,21 @@ class PokemonListService {
     Map<String, bool>? selectedTypes,
     int? selectedGeneration,
     RangeValues? powerRange,
+    RangeValues? heightRange,
+    RangeValues? weightRange,
   }) async {
-    int offset = (page - 1) * pageSize;
-    
-    // Verificar se há filtros ativos
-    bool hasActiveFilters = (selectedTypes?.values.contains(true) ?? false) ||
-                           (selectedGeneration != null && selectedGeneration > 0) ||
-                           (powerRange != null && powerRange != const RangeValues(0, 1000));
-    
-    // Verificar se há filtro de poder ativo
-    bool hasPowerFilter = powerRange != null && powerRange != const RangeValues(0, 1000);
-    
+    final int offset = (page - 1) * pageSize;
+
+    final bool hasActiveFilters =
+        (selectedTypes?.values.contains(true) ?? false) ||
+            (selectedGeneration != null && selectedGeneration > 0) ||
+            (powerRange != null && powerRange != const RangeValues(0, 1000)) ||
+            (heightRange != null && heightRange != const RangeValues(0, 20)) ||
+            (weightRange != null && weightRange != const RangeValues(0, 1000));
+
     try {
       // Inicializar cache inteligente
       await PokemonCacheService.initialize();
-      
-      // Primeira tentativa: buscar resultados filtrados do cache inteligente
-      if (hasActiveFilters) {
-        final cachedResults = await _tryGetFilteredFromCache(
-          selectedTypes: selectedTypes,
-          selectedGeneration: selectedGeneration,
-          powerRange: powerRange,
-          page: page,
-        );
-        
-        if (cachedResults.isNotEmpty) {
-          print('Usando resultados filtrados do cache para página $page');
-          return {
-            'pokemons': cachedResults,
-            'total': await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange),
-          };
-        }
-      }
 
       // Buscar lista base de nomes/URLs
       final response = await http.get(
@@ -86,83 +71,149 @@ class PokemonListService {
         return {'pokemons': _getDefaultPokemons(), 'total': 10};
       }
 
-      List<Map<String, dynamic>> resultsToFetchDetails;
-      
       if (hasActiveFilters) {
-        // OTIMIZAÇÃO: Aplicar filtros básicos ANTES de buscar detalhes
-        resultsToFetchDetails = await _preFilterResults(
-          results, 
-          selectedTypes, 
-          selectedGeneration, 
-          powerRange
+        final filteredResults = await _preFilterResults(
+          results,
+          selectedTypes,
+          selectedGeneration,
+          powerRange,
+          heightRange,
+          weightRange,
         );
-        
-        // Aplicar paginação nos resultados pré-filtrados
-        final startIndex = offset;
-        final endIndex = startIndex + pageSize;
-        resultsToFetchDetails = resultsToFetchDetails.length > startIndex 
-            ? resultsToFetchDetails.sublist(startIndex, endIndex > resultsToFetchDetails.length ? resultsToFetchDetails.length : endIndex)
-            : [];
-            
-        print('Filtros aplicados. Buscando detalhes de ${resultsToFetchDetails.length} Pokémon para página $page');
-      } else {
-        // Sem filtros, busca detalhes apenas para a página atual
-        final int startIndex = offset;
-        final int endIndex = startIndex + pageSize;
-        resultsToFetchDetails = results.length > startIndex 
-            ? List<Map<String, dynamic>>.from(results.sublist(startIndex, endIndex > results.length ? results.length : endIndex)) 
-            : [];
+
+        final filterOutcome = await _applyFiltersAndPaginate(
+          filteredResults: filteredResults,
+          page: page,
+          selectedTypes: selectedTypes ?? {},
+          selectedGeneration: selectedGeneration ?? 0,
+          powerRange: powerRange ?? const RangeValues(0, 1000),
+          heightRange: heightRange,
+          weightRange: weightRange,
+        );
+
+        return filterOutcome;
       }
       
+      // Sem filtros, busca detalhes apenas para a página atual
+      final int endIndex = offset + pageSize;
+      final resultsToFetchDetails = results.length > offset
+          ? List<Map<String, dynamic>>.from(
+              results.sublist(offset, endIndex > results.length ? results.length : endIndex),
+            )
+          : <Map<String, dynamic>>[];
+
       if (resultsToFetchDetails.isEmpty) {
-        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
+        return {'pokemons': <Pokemon>[], 'total': totalApiPokemons};
       }
       
       // Buscar detalhes dos Pokémon selecionados
       final fetchedPokemons = await _fetchPokemonDetails(resultsToFetchDetails);
       
       if (fetchedPokemons.isEmpty) {
-        return {'pokemons': [], 'total': hasActiveFilters ? 0 : totalApiPokemons};
-      }
-
-      // Aplicar filtros finais (principalmente filtro de poder se necessário)
-      List<Pokemon> finalPokemonList = fetchedPokemons;
-      
-      if (hasPowerFilter) {
-        // Buscar stats apenas para os Pokémon que chegaram até aqui
-        await _ensureStatsForFilter(fetchedPokemons, powerRange);
-        
-        finalPokemonList = fetchedPokemons.where((pokemon) {
-          return PokemonFilterService.shouldIncludePokemon(
-            pokemon: pokemon,
-            selectedTypes: {},  // Filtros de tipo já aplicados
-            selectedGeneration: 0,  // Filtro de geração já aplicado
-            powerRange: powerRange,
-            statsCache: _statsCache,
-          );
-        }).toList();
+        return {'pokemons': <Pokemon>[], 'total': totalApiPokemons};
       }
 
       // Ordenar
-      finalPokemonList.sort((a, b) => a.id.compareTo(b.id));
-
-      // Salvar no cache inteligente
-      for (final pokemon in finalPokemonList) {
-        await PokemonCacheService.setPokemon(pokemon);
-      }
-
-      final totalCount = hasActiveFilters 
-          ? await _getFilteredTotal(selectedTypes, selectedGeneration, powerRange)
-          : totalApiPokemons;
+      fetchedPokemons.sort((a, b) => a.id.compareTo(b.id));
 
       return {
-        'pokemons': finalPokemonList,
-        'total': totalCount,
+        'pokemons': fetchedPokemons,
+        'total': totalApiPokemons,
       };
     } catch (e) {
       print('Erro geral ao carregar lista de Pokémon: $e');
       return {'pokemons': _getDefaultPokemons(), 'total': 10};
     }
+  }
+
+  Future<Map<String, dynamic>> _applyFiltersAndPaginate({
+    required List<Map<String, dynamic>> filteredResults,
+    required int page,
+    required Map<String, bool> selectedTypes,
+    required int selectedGeneration,
+    required RangeValues powerRange,
+    RangeValues? heightRange,
+    RangeValues? weightRange,
+  }) async {
+    if (filteredResults.isEmpty) {
+      return {'pokemons': <Pokemon>[], 'total': 0};
+    }
+
+    final int offset = (page - 1) * pageSize;
+    final bool hasPowerFilter = powerRange != const RangeValues(0, 1000);
+    final bool hasTypeFilter = selectedTypes.values.contains(true);
+    final bool hasHeightFilter =
+        heightRange != null && heightRange != const RangeValues(0, 20);
+    final bool hasWeightFilter =
+        weightRange != null && weightRange != const RangeValues(0, 1000);
+    final bool onlyGenerationFilter = selectedGeneration > 0 &&
+        !hasTypeFilter &&
+        !hasPowerFilter &&
+        !hasHeightFilter &&
+        !hasWeightFilter;
+
+    if (onlyGenerationFilter) {
+      final int totalMatches = filteredResults.length;
+      if (offset >= totalMatches) {
+        return {'pokemons': <Pokemon>[], 'total': totalMatches};
+      }
+
+      final int endIndex = min(offset + pageSize, totalMatches);
+      final slice = filteredResults.sublist(offset, endIndex);
+      final pokemons = await _fetchPokemonDetails(slice);
+      pokemons.sort((a, b) => a.id.compareTo(b.id));
+
+      return {
+        'pokemons': pokemons,
+        'total': totalMatches,
+      };
+    }
+
+    int matchedCount = 0;
+    final List<Pokemon> pagePokemons = [];
+    const int chunkSize = 40;
+
+    for (int start = 0; start < filteredResults.length; start += chunkSize) {
+      final chunk = filteredResults.sublist(
+        start,
+        min(start + chunkSize, filteredResults.length),
+      );
+
+      final chunkPokemons = await _fetchPokemonDetails(chunk);
+      if (chunkPokemons.isEmpty) continue;
+
+      if (hasPowerFilter) {
+        await _ensureStatsForFilter(chunkPokemons, powerRange);
+      }
+
+      for (final pokemon in chunkPokemons) {
+        final includePokemon = PokemonFilterService.shouldIncludePokemon(
+          pokemon: pokemon,
+          selectedTypes: selectedTypes,
+          selectedGeneration: selectedGeneration,
+          powerRange: powerRange,
+          statsCache: _statsCache,
+          heightRange: heightRange,
+          weightRange: weightRange,
+        );
+
+        if (!includePokemon) {
+          continue;
+        }
+
+        matchedCount++;
+        if (matchedCount > offset && pagePokemons.length < pageSize) {
+          pagePokemons.add(pokemon);
+        }
+      }
+    }
+
+    pagePokemons.sort((a, b) => a.id.compareTo(b.id));
+
+    return {
+      'pokemons': pagePokemons,
+      'total': matchedCount,
+    };
   }
 
   // Método auxiliar para pré-filtrar resultados sem buscar detalhes
@@ -171,120 +222,141 @@ class PokemonListService {
     Map<String, bool>? selectedTypes,
     int? selectedGeneration,
     RangeValues? powerRange,
+    RangeValues? heightRange,
+    RangeValues? weightRange,
   ) async {
-    List<Map<String, dynamic>> filteredResults = [];
-    
+    final filteredResults = <Map<String, dynamic>>[];
+
+    final List<String> selectedTypeNames = selectedTypes != null
+        ? selectedTypes.entries
+            .where((entry) => entry.value)
+            .map((entry) => entry.key.toLowerCase())
+            .toList()
+        : <String>[];
+
+    Set<int>? allowedTypeIds;
+    if (selectedTypeNames.isNotEmpty) {
+      allowedTypeIds = <int>{};
+      for (final typeName in selectedTypeNames) {
+        final idsForType = await _fetchTypePokemonIds(typeName);
+        allowedTypeIds.addAll(idsForType);
+      }
+    }
+
     for (final result in results) {
-      final pokemonUrl = result['url'] as String;
-      final pokemonId = int.parse(pokemonUrl.split('/')[6]);
-      
-      // Aplicar filtro de geração (não precisa de requisição)
+      if (result is! Map<String, dynamic>) continue;
+
+      final pokemonUrl = result['url'] as String?;
+      if (pokemonUrl == null) continue;
+
+      final segments = pokemonUrl.split('/');
+      if (segments.length < 7) continue;
+
+      final pokemonId = int.tryParse(segments[6]);
+      if (pokemonId == null) continue;
+
       if (selectedGeneration != null && selectedGeneration > 0) {
         final generation = _getPokemonGeneration(pokemonId);
         if (generation != selectedGeneration) {
           continue;
         }
       }
-      
-      // Verificar se já temos dados em cache para aplicar outros filtros
+
+      if (allowedTypeIds != null &&
+          allowedTypeIds.isNotEmpty &&
+          !allowedTypeIds.contains(pokemonId)) {
+        continue;
+      }
+
+      // Verificar se já temos dados em cache para aplicar filtros adicionais
       final cachedPokemon = PokemonCacheService.getPokemon(pokemonId);
       if (cachedPokemon != null) {
-        // Aplicar filtros usando dados do cache
-        if (selectedTypes != null && selectedTypes.isNotEmpty) {
-          final selectedTypesList = selectedTypes.entries
-              .where((entry) => entry.value)
-              .map((entry) => entry.key)
-              .toList();
-          
-          final hasAnySelectedType = selectedTypesList.any((selectedType) =>
-            cachedPokemon.types.map((t) => t.toLowerCase()).contains(selectedType.toLowerCase())
-          );
-          
-          if (!hasAnySelectedType) continue;
+        if (selectedTypeNames.isNotEmpty) {
+          final pokemonTypes =
+              cachedPokemon.types.map((t) => t.toLowerCase()).toList();
+          final hasAnySelectedType =
+              selectedTypeNames.any((selectedType) => pokemonTypes.contains(selectedType));
+
+          if (!hasAnySelectedType) {
+            continue;
+          }
         }
-        
-        // Filtro de poder (se temos stats em cache)
+
         if (powerRange != null && powerRange != const RangeValues(0, 1000)) {
           final stats = PokemonCacheService.getStats(pokemonId);
-          if (stats != null) {
+          if (stats != null && stats.isNotEmpty) {
             final totalPower = stats.values.reduce((a, b) => a + b);
             if (totalPower < powerRange.start || totalPower > powerRange.end) {
               continue;
             }
           }
         }
+
+        if (heightRange != null && heightRange != const RangeValues(0, 20)) {
+          final h = cachedPokemon.heightMeters;
+          if (h == null || h < heightRange.start || h > heightRange.end) {
+            continue;
+          }
+        }
+
+        if (weightRange != null && weightRange != const RangeValues(0, 1000)) {
+          final w = cachedPokemon.weightKg;
+          if (w == null || w < weightRange.start || w > weightRange.end) {
+            continue;
+          }
+        }
       }
-      
-      filteredResults.add(result);
+
+      filteredResults.add(Map<String, dynamic>.from(result));
     }
-    
+
     return filteredResults;
   }
 
-  // Método auxiliar para tentar obter resultados filtrados do cache
-  Future<List<Pokemon>> _tryGetFilteredFromCache({
-    Map<String, bool>? selectedTypes,
-    int? selectedGeneration,
-    RangeValues? powerRange,
-    int page = 1,
-  }) async {
-    try {
-      // Implementar lógica para buscar do cache inteligente
-      final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
-      if (allCachedPokemons.isEmpty) return [];
-      
-      // Aplicar filtros
-      final filteredPokemons = allCachedPokemons.where((pokemon) {
-        return PokemonFilterService.shouldIncludePokemon(
-          pokemon: pokemon,
-          selectedTypes: selectedTypes ?? {},
-          selectedGeneration: selectedGeneration ?? 0,
-          powerRange: powerRange ?? const RangeValues(0, 1000),
-          statsCache: _statsCache,
-        );
-      }).toList();
-      
-      // Aplicar paginação
-      final int offset = (page - 1) * pageSize;
-      final int startIndex = offset;
-      final int endIndex = startIndex + pageSize;
-      
-      if (filteredPokemons.length <= startIndex) return [];
-      
-      return filteredPokemons.sublist(
-        startIndex, 
-        endIndex > filteredPokemons.length ? filteredPokemons.length : endIndex
-      );
-    } catch (e) {
-      print('Erro ao buscar do cache: $e');
-      return [];
+  Future<Set<int>> _fetchTypePokemonIds(String typeName) async {
+    final key = typeName.toLowerCase();
+    if (_typePokemonCache.containsKey(key)) {
+      return _typePokemonCache[key]!;
     }
-  }
 
-  // Método auxiliar para obter o total de resultados filtrados
-  Future<int> _getFilteredTotal(
-    Map<String, bool>? selectedTypes,
-    int? selectedGeneration,
-    RangeValues? powerRange,
-  ) async {
     try {
-      final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
-      if (allCachedPokemons.isEmpty) return 0;
-      
-      final filteredPokemons = allCachedPokemons.where((pokemon) {
-        return PokemonFilterService.shouldIncludePokemon(
-          pokemon: pokemon,
-          selectedTypes: selectedTypes ?? {},
-          selectedGeneration: selectedGeneration ?? 0,
-          powerRange: powerRange ?? const RangeValues(0, 1000),
-          statsCache: _statsCache,
-        );
-      }).toList();
-      
-      return filteredPokemons.length;
+      final response = await http
+          .get(Uri.parse('https://pokeapi.co/api/v2/type/$key'))
+          .timeout(const Duration(seconds: 10));
+
+      if (response.statusCode != 200) {
+        print(
+            'Falha ao carregar Pokémon para o tipo $typeName: ${response.statusCode}');
+        _typePokemonCache[key] = <int>{};
+        return _typePokemonCache[key]!;
+      }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      final List pokemonList = data['pokemon'] ?? [];
+      final ids = <int>{};
+
+      for (final entry in pokemonList) {
+        if (entry is! Map<String, dynamic>) continue;
+        final pokemonData = entry['pokemon'];
+        if (pokemonData is! Map<String, dynamic>) continue;
+        final url = pokemonData['url'] as String?;
+        if (url == null) continue;
+
+        final segments = url.split('/');
+        if (segments.length < 7) continue;
+
+        final pokemonId = int.tryParse(segments[6]);
+        if (pokemonId != null) {
+          ids.add(pokemonId);
+        }
+      }
+
+      _typePokemonCache[key] = ids;
+      return ids;
     } catch (e) {
-      print('Erro ao calcular total filtrado: $e');
-      return 0;
+      print('Erro ao buscar Pokémon para o tipo $typeName: $e');
+      _typePokemonCache[key] = <int>{};
+      return _typePokemonCache[key]!;
     }
   }
 
@@ -345,17 +417,29 @@ class PokemonListService {
       return; // Não precisa buscar stats se o filtro de poder não está ativo
     }
 
-    List<Future<void>> statFutures = [];
+    final List<Future<void>> statFutures = [];
     for (var pokemon in pokemonsToFilter) {
-      // Verificar cache inteligente primeiro, depois legado
-      if (!PokemonCacheService.hasStats(pokemon.id) && !_statsCache.containsKey(pokemon.id)) {
-        statFutures.add(fetchPokemonStats(pokemon.id)); // fetchPokemonStats deve adicionar ao _statsCache
+      final cachedStats = PokemonCacheService.getStats(pokemon.id);
+      if (cachedStats != null && cachedStats.isNotEmpty) {
+        _statsCache[pokemon.id] = cachedStats;
+        continue;
       }
+
+      if (_statsCache.containsKey(pokemon.id) && _statsCache[pokemon.id]!.isNotEmpty) {
+        continue;
+      }
+
+      // Verificar cache inteligente primeiro, depois legado
+      statFutures.add(fetchPokemonStats(pokemon.id).then((stats) {
+        if (stats != null && stats.isNotEmpty) {
+          _statsCache[pokemon.id] = stats;
+        }
+      }));
     }
 
     if (statFutures.isNotEmpty) {
       print('Buscando stats para ${statFutures.length} Pokémon para aplicar filtro de poder...');
-      await Future.wait(statFutures).catchError((e) {
+      await Future.wait(statFutures, eagerError: false).catchError((e) {
         print("Erro ao buscar alguns stats para filtro: $e. Filtro de poder pode estar incompleto.");
         return <void>[]; // Retorna lista vazia em caso de erro
       });
@@ -442,6 +526,8 @@ class PokemonListService {
     Map<String, bool>? selectedTypes,
     int? selectedGeneration,
     RangeValues? powerRange,
+  RangeValues? heightRange,
+  RangeValues? weightRange,
   }) async {
     if (query.isEmpty && (selectedTypes == null || selectedTypes.isEmpty) && 
         selectedGeneration == null && powerRange == null) {
@@ -464,6 +550,8 @@ class PokemonListService {
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: powerRange ?? const RangeValues(0, 1000),
           statsCache: {}, // O cache de stats é interno do PokemonCacheService
+          heightRange: heightRange,
+          weightRange: weightRange,
         );
       }).toList();
       
@@ -579,6 +667,8 @@ class PokemonListService {
            selectedGeneration: selectedGeneration ?? 0,
            powerRange: powerRange ?? const RangeValues(0, 1000),
            statsCache: _statsCache,
+           heightRange: heightRange,
+           weightRange: weightRange,
          );
       }).toList();
 

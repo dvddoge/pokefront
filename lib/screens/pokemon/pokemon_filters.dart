@@ -5,9 +5,13 @@ class PokemonFilters extends StatefulWidget {
   final Map<String, bool> selectedTypes;
   final int selectedGeneration;
   final RangeValues powerRange;
+  final RangeValues heightRange;
+  final RangeValues weightRange;
   final Function(Map<String, bool>) onTypesChanged;
   final Function(int) onGenerationChanged;
   final Function(RangeValues) onPowerRangeChanged;
+  final Function(RangeValues) onHeightRangeChanged;
+  final Function(RangeValues) onWeightRangeChanged;
   final Color Function(String) getTypeColor;
   final bool showAdvancedSearch;
   final Function(bool) onAdvancedSearchToggle;
@@ -17,9 +21,13 @@ class PokemonFilters extends StatefulWidget {
     required this.selectedTypes,
     required this.selectedGeneration,
     required this.powerRange,
+  required this.heightRange,
+  required this.weightRange,
     required this.onTypesChanged,
     required this.onGenerationChanged,
     required this.onPowerRangeChanged,
+  required this.onHeightRangeChanged,
+  required this.onWeightRangeChanged,
     required this.getTypeColor,
     required this.showAdvancedSearch,
     required this.onAdvancedSearchToggle,
@@ -35,7 +43,7 @@ class _PokemonFiltersState extends State<PokemonFilters> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+  _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -124,6 +132,28 @@ class _PokemonFiltersState extends State<PokemonFilters> with TickerProviderStat
                     ],
                   ),
                 ),
+                Tab(
+                  height: 50,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.height, size: 16),
+                      SizedBox(height: 2),
+                      Text('Altura'),
+                    ],
+                  ),
+                ),
+                Tab(
+                  height: 50,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.monitor_weight, size: 16),
+                      SizedBox(height: 2),
+                      Text('Peso'),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -151,6 +181,20 @@ class _PokemonFiltersState extends State<PokemonFilters> with TickerProviderStat
                   child: PowerRangeFilter(
                     powerRange: widget.powerRange,
                     onPowerRangeChanged: widget.onPowerRangeChanged,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: HeightRangeFilter(
+                    heightRange: widget.heightRange,
+                    onHeightRangeChanged: widget.onHeightRangeChanged,
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: WeightRangeFilter(
+                    weightRange: widget.weightRange,
+                    onWeightRangeChanged: widget.onWeightRangeChanged,
                   ),
                 ),
               ],

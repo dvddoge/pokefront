@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../../../models/pokemon.dart';
+import '../../../models/status_condition.dart';
 
 class PokemonInfo extends StatelessWidget {
   final Pokemon pokemon;
@@ -31,12 +33,14 @@ class PokemonInfo extends StatelessWidget {
         ],
       ),
       child: Column(
-        crossAxisAlignment: isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        crossAxisAlignment:
+            isLeft ? CrossAxisAlignment.start : CrossAxisAlignment.end,
         mainAxisSize: MainAxisSize.min,
         children: [
           Row(
             mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
+            mainAxisAlignment:
+                isLeft ? MainAxisAlignment.start : MainAxisAlignment.end,
             children: [
               Text(
                 pokemon.name.toUpperCase(),
@@ -57,6 +61,30 @@ class PokemonInfo extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 4),
+          if (pokemon.status != StatusCondition.none)
+            Padding( 
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Align(
+                alignment:
+                    isLeft ? Alignment.centerLeft : Alignment.centerRight,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.orangeAccent.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    pokemon.status.name.toUpperCase(),
+                    style: const TextStyle(
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Container(
             width: 200,
             height: 20,
@@ -72,8 +100,11 @@ class PokemonInfo extends StatelessWidget {
                     value: hp / maxHp,
                     backgroundColor: Colors.grey[200],
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      hp / maxHp > 0.5 ? Colors.green :
-                      hp / maxHp > 0.2 ? Colors.orange : Colors.red,
+                      hp / maxHp > 0.5
+                          ? Colors.green
+                          : hp / maxHp > 0.2
+                              ? Colors.orange
+                              : Colors.red,
                     ),
                   ),
                 ),
@@ -94,4 +125,4 @@ class PokemonInfo extends StatelessWidget {
       ),
     );
   }
-} 
+}

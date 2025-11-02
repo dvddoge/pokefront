@@ -28,7 +28,8 @@ class PokemonScreen extends StatefulWidget {
   _PokemonScreenState createState() => _PokemonScreenState();
 }
 
-class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateMixin {
+class _PokemonScreenState extends State<PokemonScreen>
+    with TickerProviderStateMixin {
   int currentPage = 1;
   final int pageSize = 20;
   final TextEditingController _searchController = TextEditingController();
@@ -37,8 +38,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   final _scrollController = ScrollController();
   Timer? _debounce;
   List<Pokemon> searchResults = [];
-  List<Pokemon> allSearchResults = []; // Lista completa filtrada (localmente ou do serviço)
-  List<Pokemon> originalSearchResults = []; // Lista original BRUTA da busca por texto
+  List<Pokemon> allSearchResults =
+      []; // Lista completa filtrada (localmente ou do serviço)
+  List<Pokemon> originalSearchResults =
+      []; // Lista original BRUTA da busca por texto
   int totalPages = 1;
   String currentSearchQuery = '';
   bool isSearchMode = false;
@@ -48,31 +51,37 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   Map<String, int>? statsToCompare;
   bool _isLoadingStats = false;
   final Map<int, Map<String, int>> _statsCache = {};
-  
+
   // Novos estados para controle da transição
   bool _showClosingTransition = false;
   Pokemon? _pokemon1ForBattle;
   Pokemon? _pokemon2ForBattle;
-  
+
   // Serviços
   final ImagePreloadService _imagePreloadService = ImagePreloadService();
   final PokemonListService _pokemonListService = PokemonListService();
-  
+
   // Controladores de animação
   late AnimationController _animationController;
   late AnimationController _bannerAnimationController;
   late AnimationController _loadingAnimationController;
   late AnimationController _shakeController;
   late AnimationController _cardAnimationController;
-  
+
   // Notificadores
-  final ValueNotifier<Pokemon?> _selectedPokemonNotifier = ValueNotifier<Pokemon?>(null);
-  final ValueNotifier<bool> _comparisonModeNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<bool> _isLoadingStatsNotifier = ValueNotifier<bool>(false);
-  
+  final ValueNotifier<Pokemon?> _selectedPokemonNotifier =
+      ValueNotifier<Pokemon?>(null);
+  final ValueNotifier<bool> _comparisonModeNotifier =
+      ValueNotifier<bool>(false);
+  final ValueNotifier<bool> _isLoadingStatsNotifier =
+      ValueNotifier<bool>(false);
+
   // Filtros
   Map<String, bool> selectedTypes = {};
   RangeValues powerRange = const RangeValues(0, 1000);
+  // Novos filtros numéricos
+  RangeValues heightRange = const RangeValues(0, 20); // metros
+  RangeValues weightRange = const RangeValues(0, 1000); // kg
   int selectedGeneration = 0;
   bool showAdvancedSearch = false;
   bool isFiltering = false;
@@ -81,10 +90,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   void initState() {
     super.initState();
     _setupAnimationControllers();
-    
+
     // Registrar a instância do service no cache para limpeza
     PokemonCacheService.setPokemonListService(_pokemonListService);
-    
+
     _loadInitialPokemonList();
     _selectedPokemonNotifier.addListener(_handlePokemonSelectionChange);
     _comparisonModeNotifier.addListener(_handleComparisonModeChange);
@@ -95,17 +104,17 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     _bannerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 4000),
       vsync: this,
     )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _bannerAnimationController.reverse();
-      } else if (status == AnimationStatus.dismissed) {
-        _bannerAnimationController.forward();
-      }
-    });
+        if (status == AnimationStatus.completed) {
+          _bannerAnimationController.reverse();
+        } else if (status == AnimationStatus.dismissed) {
+          _bannerAnimationController.forward();
+        }
+      });
 
     _bannerAnimationController.forward();
 
@@ -113,12 +122,13 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        _shakeController.reverse();
-      } else if (status == AnimationStatus.dismissed && pokemonToCompare != null) {
-        _shakeController.forward();
-      }
-    });
+        if (status == AnimationStatus.completed) {
+          _shakeController.reverse();
+        } else if (status == AnimationStatus.dismissed &&
+            pokemonToCompare != null) {
+          _shakeController.forward();
+        }
+      });
 
     _cardAnimationController = AnimationController(
       vsync: this,
@@ -127,7 +137,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
     _loadingAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2000), // Mais lento para ser mais visível
+      duration: const Duration(
+          milliseconds: 2000), // Mais lento para ser mais visível
     )..repeat();
   }
 
@@ -150,63 +161,66 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   Future<void> _loadInitialPokemonList() async {
     if (!mounted) return;
-    
+
     setState(() {
       isSearching = true;
       searchError = '';
     });
-    
+
     try {
-      print('LoadInitialPokemonList: Buscando página $currentPage com filtros...');
-      final result = await _pokemonListService.fetchPokemonList(
+      print(
+          'LoadInitialPokemonList: Buscando página $currentPage com filtros...');
+      final result = await _pokemonListService
+          .fetchPokemonList(
         page: currentPage,
         selectedTypes: selectedTypes,
         selectedGeneration: selectedGeneration,
         powerRange: powerRange,
-      ).timeout(const Duration(seconds: 20), onTimeout: () {
+        heightRange: heightRange,
+        weightRange: weightRange,
+      )
+          .timeout(const Duration(seconds: 20), onTimeout: () {
         print('Timeout ao carregar Pokémon');
-        return {
-          'pokemons': _getDefaultPokemons(),
-          'total': 10
-        };
+        return {'pokemons': _getDefaultPokemons(), 'total': 10};
       });
-      
+
       if (!mounted) return;
-      
+
       setState(() {
         // Recebe os resultados do serviço
         final List<Pokemon> fetchedPokemons = result['pokemons'];
         final int totalFetched = result['total'];
-        
+
         searchResults = fetchedPokemons;
         totalPages = (totalFetched / pageSize).ceil();
         isSearching = false;
-        
+
         // Verifica se a *página específica* está vazia, mas a busca geral não falhou
         if (fetchedPokemons.isEmpty && totalFetched > 0 && currentPage > 1) {
-          searchError = 'Não há mais Pokémon para carregar.'; 
+          searchError = 'Não há mais Pokémon para carregar.';
           // Não substitui por padrão, apenas informa o usuário.
           // A UI deve tratar a lista vazia corretamente.
         } else if (fetchedPokemons.isEmpty && totalFetched == 0) {
-            searchError = 'Nenhum Pokémon encontrado com os filtros aplicados.';
-            // Aqui também não substitui, a UI deve mostrar a mensagem.
+          searchError = 'Nenhum Pokémon encontrado com os filtros aplicados.';
+          // Aqui também não substitui, a UI deve mostrar a mensagem.
         } else if (fetchedPokemons.isEmpty) {
           searchError = 'Nenhum Pokémon encontrado.';
           // Caso inicial ou erro inesperado, pode mostrar padrão se desejar
-          // searchResults = _getDefaultPokemons(); 
+          // searchResults = _getDefaultPokemons();
         } else {
           searchError = ''; // Limpa erro se carregar com sucesso
-          print('Carregados ${searchResults.length} Pokémon com sucesso para a página $currentPage');
+          print(
+              'Carregados ${searchResults.length} Pokémon com sucesso para a página $currentPage');
         }
       });
     } catch (e) {
       print('Erro ao carregar lista inicial: $e');
       if (!mounted) return;
-      
+
       setState(() {
         isSearching = false;
         searchError = 'Erro ao carregar Pokémon. Tente novamente.';
-        
+
         // Adiciona alguns Pokémon padrão para evitar tela vazia
         searchResults = _getDefaultPokemons();
         totalPages = 1;
@@ -220,7 +234,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       }
     }
   }
-  
+
   // Método para obter uma lista de Pokémon padrão quando ocorre um erro
   List<Pokemon> _getDefaultPokemons() {
     return List.generate(10, (index) {
@@ -228,7 +242,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       return Pokemon(
         id: id,
         name: 'Pokémon $id',
-        imageUrl: 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
+        imageUrl:
+            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$id.png',
         types: ['normal'],
       );
     });
@@ -236,10 +251,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   List<Pokemon> _getPageItems(int page, [List<Pokemon>? sourceList]) {
     // Prioriza sourceList se fornecido, caso contrário usa a lógica padrão baseada em isSearchMode
-    final list = sourceList ?? (isSearchMode ? allSearchResults : searchResults);
+    final list =
+        sourceList ?? (isSearchMode ? allSearchResults : searchResults);
     final startIndex = (page - 1) * pageSize;
     final endIndex = math.min(startIndex + pageSize, list.length);
-    if (startIndex >= list.length || startIndex < 0) return []; // Adicionado cheque startIndex < 0 por segurança
+    if (startIndex >= list.length || startIndex < 0)
+      return []; // Adicionado cheque startIndex < 0 por segurança
     return list.sublist(startIndex, endIndex);
   }
 
@@ -247,89 +264,109 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     if (!mounted) return;
     final currentQuery = _searchController.text;
     final stillInSearchMode = currentQuery.isNotEmpty;
-    print("HandleSearchResults: Recebido ${rawResults.length} resultados brutos para '$currentQuery'");
+    print(
+        "HandleSearchResults: Recebido ${rawResults.length} resultados brutos para '$currentQuery'");
 
     setState(() {
-        isSearchMode = stillInSearchMode;
-        currentSearchQuery = currentQuery;
-        originalSearchResults = rawResults;
-        currentPage = 1;
-        isSearching = false;
+      isSearchMode = stillInSearchMode;
+      currentSearchQuery = currentQuery;
+      originalSearchResults = rawResults;
+      currentPage = 1;
+      isSearching = false;
 
-        if (stillInSearchMode) {
-          _reapplyLocalFiltersAndUpdateStateVariables();
-        } else {
-          print("HandleSearchResults: Busca limpa, chamando _loadInitialPokemonList");
-          searchResults = [];
-          allSearchResults = [];
-          totalPages = 0;
-          searchError = '';
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-             if (mounted) {
-               _loadInitialPokemonList();
-             }
-          });
-        }
+      if (stillInSearchMode) {
+        _reapplyLocalFiltersAndUpdateStateVariables();
+      } else {
+        print(
+            "HandleSearchResults: Busca limpa, chamando _loadInitialPokemonList");
+        searchResults = [];
+        allSearchResults = [];
+        totalPages = 0;
+        searchError = '';
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _loadInitialPokemonList();
+          }
+        });
+      }
     });
   }
 
   Map<String, dynamic> _calculateFilteredState() {
-      if (!isSearchMode) {
-          print("_calculateFilteredState: Chamada inválida (isSearchMode = false)");
-          // Retorna listas vazias do tipo correto para evitar type errors posteriores
-          return {'searchResults': <Pokemon>[], 'allSearchResults': <Pokemon>[], 'totalPages': 0, 'searchError': ''};
-      }
-
-      print("CalculateFilteredState START: originalSearchResults.length = ${originalSearchResults.length}");
-      bool filtersAreActive = selectedTypes.values.any((v) => v) || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000);
-      print("CalculateFilteredState: Filters Active = $filtersAreActive");
-
-      List<Pokemon> filteredList;
-      if (filtersAreActive) {
-          try {
-            // Certifique-se que _shouldIncludePokemon lida bem com estados intermediários se necessário
-            filteredList = originalSearchResults.where(_shouldIncludePokemon).toList();
-          } catch (e) {
-            print("CalculateFilteredState: ERRO durante .where: $e");
-            filteredList = <Pokemon>[]; // Use tipo explícito
-          }
-      } else {
-          // Cria uma nova lista para evitar modificar a original indiretamente
-          filteredList = List<Pokemon>.from(originalSearchResults);
-      }
-       print("CalculateFilteredState END: filteredList.length = ${filteredList.length}");
-
-      // Calcula os novos valores
-      List<Pokemon> newAllSearchResults = filteredList;
-      // Usa currentPage que já foi resetado para 1
-      // Passa newAllSearchResults explicitamente como sourceList para _getPageItems
-      List<Pokemon> newSearchResults = _getPageItems(1, newAllSearchResults);
-      int newTotalPages = newAllSearchResults.isEmpty ? 0 : (newAllSearchResults.length / pageSize).ceil();
-      // Garante que totalPages seja pelo menos 1 se houver resultados, mesmo que menos que pageSize
-      if (newTotalPages == 0 && newAllSearchResults.isNotEmpty) {
-          newTotalPages = 1;
-      }
-      
-      String newSearchError = newAllSearchResults.isEmpty
-          ? (filtersAreActive ? 'Nenhum Pokémon encontrado com esta busca e filtros.' : 'Nenhum Pokémon encontrado para "$currentSearchQuery".')
-          : '';
-
-      print("CalculateFilteredState RESULT: newSearchResults.length=${newSearchResults.length}, newAllSearchResults.length=${newAllSearchResults.length}, newTotalPages=$newTotalPages, newSearchError='$newSearchError'");
-
+    if (!isSearchMode) {
+      print("_calculateFilteredState: Chamada inválida (isSearchMode = false)");
+      // Retorna listas vazias do tipo correto para evitar type errors posteriores
       return {
-         'searchResults': newSearchResults, // Esta é a lista para a página atual
-         'allSearchResults': newAllSearchResults, // Esta é a lista completa filtrada
-         'totalPages': newTotalPages,
-         'searchError': newSearchError,
+        'searchResults': <Pokemon>[],
+        'allSearchResults': <Pokemon>[],
+        'totalPages': 0,
+        'searchError': ''
       };
+    }
+
+    print(
+        "CalculateFilteredState START: originalSearchResults.length = ${originalSearchResults.length}");
+    bool filtersAreActive = selectedTypes.values.any((v) => v) ||
+        selectedGeneration > 0 ||
+        powerRange != const RangeValues(0, 1000) ||
+        heightRange != const RangeValues(0, 20) ||
+        weightRange != const RangeValues(0, 1000);
+    print("CalculateFilteredState: Filters Active = $filtersAreActive");
+
+    List<Pokemon> filteredList;
+    if (filtersAreActive) {
+      try {
+        // Certifique-se que _shouldIncludePokemon lida bem com estados intermediários se necessário
+        filteredList =
+            originalSearchResults.where(_shouldIncludePokemon).toList();
+      } catch (e) {
+        print("CalculateFilteredState: ERRO durante .where: $e");
+        filteredList = <Pokemon>[]; // Use tipo explícito
+      }
+    } else {
+      // Cria uma nova lista para evitar modificar a original indiretamente
+      filteredList = List<Pokemon>.from(originalSearchResults);
+    }
+    print(
+        "CalculateFilteredState END: filteredList.length = ${filteredList.length}");
+
+    // Calcula os novos valores
+    List<Pokemon> newAllSearchResults = filteredList;
+    // Usa currentPage que já foi resetado para 1
+    // Passa newAllSearchResults explicitamente como sourceList para _getPageItems
+    List<Pokemon> newSearchResults = _getPageItems(1, newAllSearchResults);
+    int newTotalPages = newAllSearchResults.isEmpty
+        ? 0
+        : (newAllSearchResults.length / pageSize).ceil();
+    // Garante que totalPages seja pelo menos 1 se houver resultados, mesmo que menos que pageSize
+    if (newTotalPages == 0 && newAllSearchResults.isNotEmpty) {
+      newTotalPages = 1;
+    }
+
+    String newSearchError = newAllSearchResults.isEmpty
+        ? (filtersAreActive
+            ? 'Nenhum Pokémon encontrado com esta busca e filtros.'
+            : 'Nenhum Pokémon encontrado para "$currentSearchQuery".')
+        : '';
+
+    print(
+        "CalculateFilteredState RESULT: newSearchResults.length=${newSearchResults.length}, newAllSearchResults.length=${newAllSearchResults.length}, newTotalPages=$newTotalPages, newSearchError='$newSearchError'");
+
+    return {
+      'searchResults': newSearchResults, // Esta é a lista para a página atual
+      'allSearchResults':
+          newAllSearchResults, // Esta é a lista completa filtrada
+      'totalPages': newTotalPages,
+      'searchError': newSearchError,
+    };
   }
 
   void _reapplyLocalFiltersAndUpdateStateVariables() {
-      final newState = _calculateFilteredState();
-      searchResults = newState['searchResults'] as List<Pokemon>;
-      allSearchResults = newState['allSearchResults'] as List<Pokemon>;
-      totalPages = newState['totalPages'] as int;
-      searchError = newState['searchError'] as String;
+    final newState = _calculateFilteredState();
+    searchResults = newState['searchResults'] as List<Pokemon>;
+    allSearchResults = newState['allSearchResults'] as List<Pokemon>;
+    totalPages = newState['totalPages'] as int;
+    searchError = newState['searchError'] as String;
   }
 
   void _handleSearchError(String error) {
@@ -338,7 +375,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       isSearching = false;
       searchResults = [];
     });
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(error),
@@ -353,9 +390,9 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       selectedTypes = newTypes;
       currentPage = 1;
       if (isSearchMode) {
-         _reapplyLocalFiltersAndUpdateStateVariables();
+        _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-         _loadInitialPokemonList();
+        _loadInitialPokemonList();
       }
     });
   }
@@ -365,9 +402,9 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       selectedGeneration = generation;
       currentPage = 1;
       if (isSearchMode) {
-         _reapplyLocalFiltersAndUpdateStateVariables();
+        _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-         _loadInitialPokemonList();
+        _loadInitialPokemonList();
       }
     });
   }
@@ -377,9 +414,33 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       powerRange = range;
       currentPage = 1;
       if (isSearchMode) {
-         _reapplyLocalFiltersAndUpdateStateVariables();
+        _reapplyLocalFiltersAndUpdateStateVariables();
       } else {
-         _loadInitialPokemonList();
+        _loadInitialPokemonList();
+      }
+    });
+  }
+
+  void _handleHeightRangeChanged(RangeValues range) {
+    setState(() {
+      heightRange = range;
+      currentPage = 1;
+      if (isSearchMode) {
+        _reapplyLocalFiltersAndUpdateStateVariables();
+      } else {
+        _loadInitialPokemonList();
+      }
+    });
+  }
+
+  void _handleWeightRangeChanged(RangeValues range) {
+    setState(() {
+      weightRange = range;
+      currentPage = 1;
+      if (isSearchMode) {
+        _reapplyLocalFiltersAndUpdateStateVariables();
+      } else {
+        _loadInitialPokemonList();
       }
     });
   }
@@ -391,6 +452,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
       selectedGeneration: selectedGeneration,
       powerRange: powerRange,
       statsCache: _statsCache,
+      heightRange: heightRange,
+      weightRange: weightRange,
     );
   }
 
@@ -445,7 +508,7 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     if (pokemonToCompare == null) {
       setState(() => _isLoadingStats = true);
       _selectedPokemonNotifier.value = pokemon;
-      
+
       _imagePreloadService.preloadPokemonImage(pokemon);
 
       _pokemonListService.fetchPokemonStats(pokemon.id).then((stats) {
@@ -484,23 +547,25 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     if (_pokemon1ForBattle == null) {
       setState(() => _isLoadingStats = true);
       _selectedPokemonNotifier.value = pokemon;
-      
+
       _imagePreloadService.preloadPokemonImage(pokemon);
 
       setState(() {
         _pokemon1ForBattle = pokemon;
         _isLoadingStats = false;
       });
-
     } else if (_pokemon1ForBattle!.id == pokemon.id) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('Pokémon já selecionado. Escolha o oponente!'), backgroundColor: Colors.orange[700]));
-
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: const Text('Pokémon já selecionado. Escolha o oponente!'),
+          backgroundColor: Colors.orange[700]));
     } else {
       setState(() => _isLoadingStats = true);
       _pokemon2ForBattle = pokemon;
       _selectedPokemonNotifier.value = null;
 
-      _imagePreloadService.preloadBattle(_pokemon1ForBattle!, _pokemon2ForBattle!).then((_) {
+      _imagePreloadService
+          .preloadBattle(_pokemon1ForBattle!, _pokemon2ForBattle!)
+          .then((_) {
         if (mounted) {
           setState(() {
             _isLoadingStats = false;
@@ -562,10 +627,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     if (_pokemon1ForBattle != null && _pokemon2ForBattle != null) {
       print('Navegando para a tela de batalha...');
       if (mounted) {
-          setState(() {
-              _selectedPokemonNotifier.value = null;
-              isBattleMode = false;
-          });
+        setState(() {
+          _selectedPokemonNotifier.value = null;
+          isBattleMode = false;
+        });
       }
       Navigator.push(
         context,
@@ -579,12 +644,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           reverseTransitionDuration: Duration.zero,
         ),
       ).then((_) {
-         _pokemon1ForBattle = null;
-         _pokemon2ForBattle = null;
-         if(mounted) setState((){});
+        _pokemon1ForBattle = null;
+        _pokemon2ForBattle = null;
+        if (mounted) setState(() {});
       });
     } else {
-       print("Erro: Pokémon para batalha não definidos ao tentar navegar.");
+      print("Erro: Pokémon para batalha não definidos ao tentar navegar.");
     }
 
     if (mounted) {
@@ -649,23 +714,24 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   void _changePage(int newPage) {
     if (newPage < 1 || newPage > totalPages) return;
-    
+
     setState(() {
       currentPage = newPage;
       // Se estiver em modo de busca, a paginação é local nos allSearchResults
       if (isSearchMode) {
-         searchResults = _getPageItems(newPage, allSearchResults);
-         isSearching = false; // Paginação local é rápida
+        searchResults = _getPageItems(newPage, allSearchResults);
+        isSearching = false; // Paginação local é rápida
       } else {
-         // Senão, busca a nova página do serviço
-         isSearching = true;
-         _loadInitialPokemonList();
+        // Senão, busca a nova página do serviço
+        isSearching = true;
+        _loadInitialPokemonList();
       }
     });
 
     // Scroll para o topo
     if (_scrollController.hasClients) {
-      _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      _scrollController.animateTo(0,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
     }
   }
 
@@ -693,7 +759,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   Widget buildPokemonCard(Pokemon pokemon) {
-    bool isSelected = (_selectedPokemonNotifier.value?.id == pokemon.id) || (pokemonToCompare?.id == pokemon.id);
+    bool isSelected = (_selectedPokemonNotifier.value?.id == pokemon.id) ||
+        (pokemonToCompare?.id == pokemon.id);
     Color typeColor = getTypeColor(pokemon.types.first);
 
     return LayoutBuilder(
@@ -704,7 +771,9 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
           animation: _cardAnimationController,
           builder: (context, child) {
             double scaleAnim = isSelected
-                ? 1.0 + 0.03 * math.sin(_cardAnimationController.value * 2 * math.pi)
+                ? 1.0 +
+                    0.03 *
+                        math.sin(_cardAnimationController.value * 2 * math.pi)
                 : 1.0;
 
             if (isSelected && !_cardAnimationController.isAnimating) {
@@ -725,10 +794,12 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: isSelected ? Border.all(
-                  color: typeColor.withOpacity(0.8),
-                  width: 2.5,
-                ) : null,
+                border: isSelected
+                    ? Border.all(
+                        color: typeColor.withOpacity(0.8),
+                        width: 2.5,
+                      )
+                    : null,
                 boxShadow: [
                   if (isSelected) ...[
                     // Borda neon interna
@@ -765,8 +836,11 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(16),
                           gradient: LinearGradient(
-                            begin: Alignment(-2.0 + _cardAnimationController.value * 4, 0),
-                            end: Alignment(-2.0 + _cardAnimationController.value * 4 + 1, 0),
+                            begin: Alignment(
+                                -2.0 + _cardAnimationController.value * 4, 0),
+                            end: Alignment(
+                                -2.0 + _cardAnimationController.value * 4 + 1,
+                                0),
                             colors: [
                               typeColor.withOpacity(0.0),
                               typeColor.withOpacity(0.15),
@@ -795,7 +869,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                       ),
                       Expanded(
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -811,37 +886,38 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                               ),
                               const SizedBox(height: 4),
                               Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: pokemon.types.map((type) {
-                                      final color = getTypeColor(type);
-                                      return Container(
-                                          margin: const EdgeInsets.symmetric(horizontal: 2),
-                                          width: 20,
-                                          height: 20,
-                                          decoration: BoxDecoration(
-                                              color: color,
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                  BoxShadow(
-                                                      color: Colors.black.withOpacity(0.2),
-                                                      spreadRadius: 1,
-                                                      blurRadius: 2,
-                                                      offset: const Offset(0, 1),
-                                                  ),
-                                              ],
-                                          ),
-                                          child: Center(
-                                              child: Text(
-                                                  type.substring(0, 1).toUpperCase(),
-                                                  style: const TextStyle(
-                                                      color: Colors.white,
-                                                      fontSize: 11,
-                                                      fontWeight: FontWeight.bold,
-                                                  ),
-                                              ),
-                                          ),
-                                      );
-                                  }).toList(),
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: pokemon.types.map((type) {
+                                  final color = getTypeColor(type);
+                                  return Container(
+                                    margin: const EdgeInsets.symmetric(
+                                        horizontal: 2),
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: color,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          spreadRadius: 1,
+                                          blurRadius: 2,
+                                          offset: const Offset(0, 1),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        type.substring(0, 1).toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
                               )
                             ],
                           ),
@@ -863,411 +939,515 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
     return SafeArea(
       child: Stack(
         children: [
-        Scaffold(
-          backgroundColor: Colors.grey[100],
-          appBar: AppBar(
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.9),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.shade900.withOpacity(0.2),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Icon(Icons.catching_pokemon, color: Colors.red[700], size: 22),
-            ),
-            const SizedBox(width: 12),
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  Colors.white,
-                  Colors.white.withOpacity(0.85),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ).createShader(bounds),
-              child: Text(
-                'PokéDex',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.white,
-                  letterSpacing: 1,
-                  shadows: [
-                    Shadow(
-                      color: Colors.black.withOpacity(0.2),
-                      offset: const Offset(1, 1),
-                      blurRadius: 2,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.red[700]!, Colors.red[900]!],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-        ),
-        elevation: 0,
-        backgroundColor: Colors.transparent,
-        actions: const [],
-      ),
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                PokemonSearch(
-                  onSearchResults: _handleSearchResults,
-                  onError: _handleSearchError,
-                  shouldIncludePokemon: _shouldIncludePokemon,
-                  isSearching: isSearching,
-                  showAdvancedSearch: showAdvancedSearch,
-                  onAdvancedSearchToggle: (value) {
-                    setState(() => showAdvancedSearch = value);
-                  },
-                  searchController: _searchController,
-                ),
-                if (showAdvancedSearch) 
+          Scaffold(
+            backgroundColor: Colors.grey[100],
+            appBar: AppBar(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
                   Container(
-                    height: 220,
-                    child: PokemonFilters(
-                      selectedTypes: selectedTypes,
-                      selectedGeneration: selectedGeneration,
-                      powerRange: powerRange,
-                      onTypesChanged: _handleTypesChanged,
-                      onGenerationChanged: _handleGenerationChanged,
-                      onPowerRangeChanged: _handlePowerRangeChanged,
-                      getTypeColor: getTypeColor,
-                      showAdvancedSearch: showAdvancedSearch,
-                      onAdvancedSearchToggle: (value) {
-                        setState(() => showAdvancedSearch = value);
-                      },
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.9),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.shade900.withOpacity(0.2),
+                          blurRadius: 4,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Icon(Icons.catching_pokemon,
+                        color: Colors.red[700], size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  ShaderMask(
+                    shaderCallback: (bounds) => LinearGradient(
+                      colors: [
+                        Colors.white,
+                        Colors.white.withOpacity(0.85),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ).createShader(bounds),
+                    child: Text(
+                      'PokéDex',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                        letterSpacing: 1,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withOpacity(0.2),
+                            offset: const Offset(1, 1),
+                            blurRadius: 2,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                Expanded(
-                  child: searchError.isNotEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            searchError,
-                            style: TextStyle(
-                              color: Colors.red[700],
-                              fontWeight: FontWeight.bold,
-                            ),
-                            textAlign: TextAlign.center,
+                ],
+              ),
+              centerTitle: true,
+              flexibleSpace: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red[700]!, Colors.red[900]!],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              actions: const [],
+            ),
+            body: SafeArea(
+              child: Stack(
+                children: [
+                  Column(
+                    children: [
+                      PokemonSearch(
+                        onSearchResults: _handleSearchResults,
+                        onError: _handleSearchError,
+                        shouldIncludePokemon: _shouldIncludePokemon,
+                        isSearching: isSearching,
+                        showAdvancedSearch: showAdvancedSearch,
+                        onAdvancedSearchToggle: (value) {
+                          setState(() => showAdvancedSearch = value);
+                        },
+                        searchController: _searchController,
+                      ),
+                      if (showAdvancedSearch)
+                        Container(
+                          height: 260,
+                          child: PokemonFilters(
+                            selectedTypes: selectedTypes,
+                            selectedGeneration: selectedGeneration,
+                            powerRange: powerRange,
+                            heightRange: heightRange,
+                            weightRange: weightRange,
+                            onTypesChanged: _handleTypesChanged,
+                            onGenerationChanged: _handleGenerationChanged,
+                            onPowerRangeChanged: _handlePowerRangeChanged,
+                            onHeightRangeChanged: _handleHeightRangeChanged,
+                            onWeightRangeChanged: _handleWeightRangeChanged,
+                            getTypeColor: getTypeColor,
+                            showAdvancedSearch: showAdvancedSearch,
+                            onAdvancedSearchToggle: (value) {
+                              setState(() => showAdvancedSearch = value);
+                            },
                           ),
                         ),
-                      )
-                    : LayoutBuilder(
-                        builder: (context, constraints) {
-                          return Stack(
-                            children: [
-                              CustomScrollView(
-                                controller: _scrollController,
-                                slivers: [
-                                  if (searchResults.isEmpty && !isSearching && isSearchMode)
-                                    SliverFillRemaining(
-                                      child: SubtleNoResults(
-                                        searchQuery: currentSearchQuery,
-                                      ),
-                                    )
-                                  else if (searchResults.isEmpty && !isSearching && (selectedTypes.isNotEmpty || selectedGeneration > 0 || powerRange != const RangeValues(0, 1000)))
-                                    SliverFillRemaining(
-                                      child: SubtleNoResults(
-                                        searchQuery: isSearchMode ? currentSearchQuery : 
-                                          'Nenhum Pokémon encontrado com os filtros selecionados:\n${[
-                                            if (selectedTypes.isNotEmpty) 
-                                              'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
-                                            if (selectedGeneration > 0) 
-                                              'Geração: $selectedGeneration',
-                                            if (powerRange != const RangeValues(0, 1000))
-                                              'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
-                                          ].join('\n')}',
-                                      ),
-                                    )
-                                  else if (searchResults.isEmpty && !isSearching)
-                                    const SliverFillRemaining(
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-                                        ),
-                                      ),
-                                    )
-                                  else
-                                    SliverPadding(
-                                      padding: EdgeInsets.only(
-                                        left: 12,
-                                        right: 12,
-                                        top: 12,
-                                        bottom: totalPages > 1 ? 80 : 12,
-                                      ),
-                                      sliver: SliverGrid(
-                                        delegate: SliverChildBuilderDelegate(
-                                          (context, index) {
-                                            return AnimationConfiguration.staggeredGrid(
-                                              position: index,
-                                              duration: const Duration(milliseconds: 375),
-                                              columnCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
-                                              child: ScaleAnimation(
-                                                child: FadeInAnimation(
-                                                  child: buildPokemonCard(searchResults[index]),
-                                                ),
-                                              ),
-                                            );
-                                          },
-                                          childCount: searchResults.length,
-                                        ),
-                                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                          crossAxisCount: MediaQuery.of(context).size.width < 360 ? 2 : 3,
-                                          childAspectRatio: 0.65,
-                                          crossAxisSpacing: 6,
-                                          mainAxisSpacing: 6,
-                                        ),
-                                      ),
+                      Expanded(
+                        child: searchError.isNotEmpty
+                            ? Center(
+                                child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Text(
+                                    searchError,
+                                    style: TextStyle(
+                                      color: Colors.red[700],
+                                      fontWeight: FontWeight.bold,
                                     ),
-                                ],
-                              ),
-                              if (totalPages > 1)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: 0,
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(vertical: 8),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, -4),
-                                        ),
-                                      ],
-                                    ),
-                                    child: SafeArea(
-                                      child: SingleChildScrollView(
-                                        scrollDirection: Axis.horizontal,
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.arrow_back_ios),
-                                              onPressed: currentPage > 1
-                                                ? () => _changePage(currentPage - 1)
-                                                : null,
-                                              color: currentPage > 1 ? Colors.red[700] : Colors.grey,
-                                            ),
-                                            if (currentPage > 2)
-                                              _buildPageButton(1),
-                                            if (currentPage > 3)
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                                child: Text('...', style: TextStyle(color: Colors.grey[600])),
-                                              ),
-                                            if (currentPage > 1)
-                                              _buildPageButton(currentPage - 1),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                              decoration: BoxDecoration(
-                                                color: Colors.red[700],
-                                                borderRadius: BorderRadius.circular(20),
-                                              ),
-                                              child: Text(
-                                                currentPage.toString(),
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                            if (currentPage < totalPages)
-                                              _buildPageButton(currentPage + 1),
-                                            if (currentPage < totalPages - 1)
-                                              Padding(
-                                                padding: const EdgeInsets.symmetric(horizontal: 8),
-                                                child: Text('...', style: TextStyle(color: Colors.grey[600])),
-                                              ),
-                                            if (currentPage < totalPages - 2)
-                                              _buildPageButton(totalPages),
-                                            IconButton(
-                                              icon: const Icon(Icons.arrow_forward_ios),
-                                              onPressed: currentPage < totalPages
-                                                ? () => _changePage(currentPage + 1)
-                                                : null,
-                                              color: currentPage < totalPages ? Colors.red[700] : Colors.grey,
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
+                                    textAlign: TextAlign.center,
                                   ),
                                 ),
-                            ],
+                              )
+                            : LayoutBuilder(
+                                builder: (context, constraints) {
+                                  return Stack(
+                                    children: [
+                                      CustomScrollView(
+                                        controller: _scrollController,
+                                        slivers: [
+                                          if (searchResults.isEmpty &&
+                                              !isSearching &&
+                                              isSearchMode)
+                                            SliverFillRemaining(
+                                              child: SubtleNoResults(
+                                                searchQuery: currentSearchQuery,
+                                              ),
+                                            )
+                                          else if (searchResults.isEmpty &&
+                                              !isSearching &&
+                                              (selectedTypes.isNotEmpty ||
+                                                  selectedGeneration > 0 ||
+                                                  powerRange !=
+                                                      const RangeValues(
+                                                          0, 1000) ||
+                                                  heightRange !=
+                                                      const RangeValues(
+                                                          0, 20) ||
+                                                  weightRange !=
+                                                      const RangeValues(
+                                                          0, 1000)))
+                                            SliverFillRemaining(
+                                              child: SubtleNoResults(
+                                                searchQuery: isSearchMode
+                                                    ? currentSearchQuery
+                                                    : 'Nenhum Pokémon encontrado com os filtros selecionados:\n${[
+                                                        if (selectedTypes
+                                                            .isNotEmpty)
+                                                          'Tipos: ${selectedTypes.entries.where((e) => e.value).map((e) => e.key.toUpperCase()).join(", ")}',
+                                                        if (selectedGeneration >
+                                                            0)
+                                                          'Geração: $selectedGeneration',
+                                                        if (powerRange !=
+                                                            const RangeValues(
+                                                                0, 1000))
+                                                          'Poder: ${powerRange.start.toInt()} - ${powerRange.end.toInt()}',
+                                                        if (heightRange !=
+                                                            const RangeValues(
+                                                                0, 20))
+                                                          'Altura: ${heightRange.start.toStringAsFixed(1)}m - ${heightRange.end.toStringAsFixed(1)}m',
+                                                        if (weightRange !=
+                                                            const RangeValues(
+                                                                0, 1000))
+                                                          'Peso: ${weightRange.start.toInt()}kg - ${weightRange.end.toInt()}kg',
+                                                      ].join('\n')}',
+                                              ),
+                                            )
+                                          else if (searchResults.isEmpty &&
+                                              !isSearching)
+                                            const SliverFillRemaining(
+                                              child: Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.red),
+                                                ),
+                                              ),
+                                            )
+                                          else
+                                            SliverPadding(
+                                              padding: EdgeInsets.only(
+                                                left: 12,
+                                                right: 12,
+                                                top: 12,
+                                                bottom:
+                                                    totalPages > 1 ? 80 : 12,
+                                              ),
+                                              sliver: SliverGrid(
+                                                delegate:
+                                                    SliverChildBuilderDelegate(
+                                                  (context, index) {
+                                                    return AnimationConfiguration
+                                                        .staggeredGrid(
+                                                      position: index,
+                                                      duration: const Duration(
+                                                          milliseconds: 375),
+                                                      columnCount:
+                                                          MediaQuery.of(context)
+                                                                      .size
+                                                                      .width <
+                                                                  360
+                                                              ? 2
+                                                              : 3,
+                                                      child: ScaleAnimation(
+                                                        child: FadeInAnimation(
+                                                          child:
+                                                              buildPokemonCard(
+                                                                  searchResults[
+                                                                      index]),
+                                                        ),
+                                                      ),
+                                                    );
+                                                  },
+                                                  childCount:
+                                                      searchResults.length,
+                                                ),
+                                                gridDelegate:
+                                                    SliverGridDelegateWithFixedCrossAxisCount(
+                                                  crossAxisCount:
+                                                      MediaQuery.of(context)
+                                                                  .size
+                                                                  .width <
+                                                              360
+                                                          ? 2
+                                                          : 3,
+                                                  childAspectRatio: 0.65,
+                                                  crossAxisSpacing: 6,
+                                                  mainAxisSpacing: 6,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                      if (totalPages > 1)
+                                        Positioned(
+                                          left: 0,
+                                          right: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                                vertical: 8),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.1),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, -4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: SafeArea(
+                                              child: SingleChildScrollView(
+                                                scrollDirection:
+                                                    Axis.horizontal,
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    IconButton(
+                                                      icon: const Icon(
+                                                          Icons.arrow_back_ios),
+                                                      onPressed: currentPage > 1
+                                                          ? () => _changePage(
+                                                              currentPage - 1)
+                                                          : null,
+                                                      color: currentPage > 1
+                                                          ? Colors.red[700]
+                                                          : Colors.grey,
+                                                    ),
+                                                    if (currentPage > 2)
+                                                      _buildPageButton(1),
+                                                    if (currentPage > 3)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 8),
+                                                        child: Text('...',
+                                                            style: TextStyle(
+                                                                color:
+                                                                    Colors.grey[
+                                                                        600])),
+                                                      ),
+                                                    if (currentPage > 1)
+                                                      _buildPageButton(
+                                                          currentPage - 1),
+                                                    Container(
+                                                      padding: const EdgeInsets
+                                                          .symmetric(
+                                                          horizontal: 16,
+                                                          vertical: 8),
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.red[700],
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(20),
+                                                      ),
+                                                      child: Text(
+                                                        currentPage.toString(),
+                                                        style: const TextStyle(
+                                                          color: Colors.white,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    if (currentPage <
+                                                        totalPages)
+                                                      _buildPageButton(
+                                                          currentPage + 1),
+                                                    if (currentPage <
+                                                        totalPages - 1)
+                                                      Padding(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                                horizontal: 8),
+                                                        child: Text('...',
+                                                            style: TextStyle(
+                                                                color:
+                                                                    Colors.grey[
+                                                                        600])),
+                                                      ),
+                                                    if (currentPage <
+                                                        totalPages - 2)
+                                                      _buildPageButton(
+                                                          totalPages),
+                                                    IconButton(
+                                                      icon: const Icon(Icons
+                                                          .arrow_forward_ios),
+                                                      onPressed: currentPage <
+                                                              totalPages
+                                                          ? () => _changePage(
+                                                              currentPage + 1)
+                                                          : null,
+                                                      color: currentPage <
+                                                              totalPages
+                                                          ? Colors.red[700]
+                                                          : Colors.grey,
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                    ],
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                  if (isSearching)
+                    Container(
+                      color: Colors.black.withOpacity(0.1),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                        ),
+                      ),
+                    ),
+                  if (_showClosingTransition)
+                    Positioned.fill(
+                      child: BattleTransition(
+                        phase: TransitionPhase.closing,
+                        onMidpoint: _navigateToBattle,
+                        onTransitionComplete: () {
+                          if (mounted && _showClosingTransition) {
+                            setState(() => _showClosingTransition = false);
+                          }
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            floatingActionButton: null,
+            bottomSheet: isComparisonMode
+                ? Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    color: Colors.red[700]?.withOpacity(0.9),
+                    child: SafeArea(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          if (pokemonToCompare != null)
+                            Row(
+                              children: [
+                                Hero(
+                                  tag: 'compare-${pokemonToCompare!.id}',
+                                  child: PokemonNetImage(
+                                    imageUrl: pokemonToCompare!.imageUrl,
+                                    pokemonId: pokemonToCompare!.id,
+                                    height: 40,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  pokemonToCompare!.name.toUpperCase(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            )
+                          else
+                            const SizedBox.shrink(),
+                          Text(
+                            pokemonToCompare == null
+                                ? 'Selecione o primeiro Pokémon'
+                                : 'Selecione o oponente',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : null,
+          ),
+          // FanMenu posicionado no canto inferior direito
+          Positioned(
+            bottom: totalPages > 1 ? -30 : -20,
+            right: -100,
+            child: isComparisonMode || isBattleMode
+                ? FloatingActionButton(
+                    heroTag: 'cancel_action',
+                    mini: true,
+                    backgroundColor: Colors.red[700],
+                    elevation: 4,
+                    onPressed: _cancelAction,
+                    child: Icon(Icons.close, color: Colors.white),
+                  )
+                : FanMenu(
+                    toggleIcon: Icons.menu,
+                    toggleColor: Colors.deepPurple[600]!,
+                    items: [
+                      FanMenuItem(
+                        icon: Icons.military_tech,
+                        color: Colors.purple[700]!,
+                        tooltip: 'Conquistas',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AchievementsScreen(),
+                            ),
                           );
                         },
                       ),
-                ),
-              ],
-            ),
-            if (isSearching)
-              Container(
-                color: Colors.black.withOpacity(0.1),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+                      FanMenuItem(
+                        icon: Icons.emoji_events,
+                        color: Colors.amber[700]!,
+                        tooltip: 'Iniciar Torneio',
+                        onTap: () {
+                          if (_selectedPokemonNotifier.value != null) {
+                            _showTournamentConfirmation();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text(
+                                    'Primeiro, selecione um Pokémon para o torneio!'),
+                                backgroundColor: Colors.amber.shade800,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                      FanMenuItem(
+                        icon: Icons.catching_pokemon,
+                        color: Colors.blue[700]!,
+                        tooltip: 'Batalha',
+                        onTap: _handleBattleMode,
+                      ),
+                      FanMenuItem(
+                        icon: Icons.compare,
+                        color: Colors.red[700]!,
+                        tooltip: 'Comparar',
+                        onTap: _handleComparisonMode,
+                      ),
+                      FanMenuItem(
+                        icon: Icons.settings,
+                        color: Colors.green[700]!,
+                        tooltip: 'Configurações',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const SettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
-                ),
-              ),
-            if (_showClosingTransition)
-              Positioned.fill(
-                child: BattleTransition(
-                  phase: TransitionPhase.closing,
-                  onMidpoint: _navigateToBattle,
-                  onTransitionComplete: () {
-                     if (mounted && _showClosingTransition) {
-                       setState(() => _showClosingTransition = false);
-                     }
-                  },
-                ),
-              ),
-          ],
-        ),
-      ),
-      floatingActionButton: null,
-      bottomSheet: isComparisonMode ? Container(
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-        color: Colors.red[700]?.withOpacity(0.9),
-        child: SafeArea(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (pokemonToCompare != null) Row(
-                children: [
-                  Hero(
-                    tag: 'compare-${pokemonToCompare!.id}',
-                    child: PokemonNetImage(
-                      imageUrl: pokemonToCompare!.imageUrl,
-                      pokemonId: pokemonToCompare!.id,
-                      height: 40,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    pokemonToCompare!.name.toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ) else const SizedBox.shrink(),
-              Text(
-                pokemonToCompare == null 
-                  ? 'Selecione o primeiro Pokémon'
-                  : 'Selecione o oponente',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
-        ),
-      ) : null,
-        ),
-        // FanMenu posicionado no canto inferior direito
-        Positioned(
-          bottom: totalPages > 1 ? -30 : -20,
-          right: -100,
-          child: isComparisonMode || isBattleMode 
-            ? FloatingActionButton(
-                heroTag: 'cancel_action',
-                mini: true,
-                backgroundColor: Colors.red[700],
-                elevation: 4,
-                onPressed: _cancelAction,
-                child: Icon(Icons.close, color: Colors.white),
-              )
-            : FanMenu(
-                toggleIcon: Icons.menu,
-                toggleColor: Colors.deepPurple[600]!,
-                items: [
-                  FanMenuItem(
-                    icon: Icons.military_tech,
-                    color: Colors.purple[700]!,
-                    tooltip: 'Conquistas',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const AchievementsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  FanMenuItem(
-                    icon: Icons.emoji_events,
-                    color: Colors.amber[700]!,
-                    tooltip: 'Iniciar Torneio',
-                    onTap: () {
-                      if (_selectedPokemonNotifier.value != null) {
-                        _showTournamentConfirmation();
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: const Text('Primeiro, selecione um Pokémon para o torneio!'),
-                            backgroundColor: Colors.amber.shade800,
-                          ),
-                        );
-                      }
-                    },
-                  ),
-                  FanMenuItem(
-                    icon: Icons.catching_pokemon,
-                    color: Colors.blue[700]!,
-                    tooltip: 'Batalha',
-                    onTap: _handleBattleMode,
-                  ),
-                  FanMenuItem(
-                    icon: Icons.compare,
-                    color: Colors.red[700]!,
-                    tooltip: 'Comparar',
-                    onTap: _handleComparisonMode,
-                  ),
-                  FanMenuItem(
-                    icon: Icons.settings,
-                    color: Colors.green[700]!,
-                    tooltip: 'Configurações',
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-        ),
-      ],
+        ],
       ),
     );
   }
@@ -1291,19 +1471,19 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
 
   void _handleComparisonModeChange() {
     if (!_comparisonModeNotifier.value) {
-       setState(() {
-          pokemonToCompare = null;
-          _selectedPokemonNotifier.value = null;
-          isComparisonMode = false;
-          isBattleMode = false;
-       });
+      setState(() {
+        pokemonToCompare = null;
+        _selectedPokemonNotifier.value = null;
+        isComparisonMode = false;
+        isBattleMode = false;
+      });
     } else {
-       setState(() {
-          isComparisonMode = true;
-          isBattleMode = false;
-          pokemonToCompare = null;
-          _selectedPokemonNotifier.value = null;
-       });
+      setState(() {
+        isComparisonMode = true;
+        isBattleMode = false;
+        pokemonToCompare = null;
+        _selectedPokemonNotifier.value = null;
+      });
     }
   }
 
@@ -1337,22 +1517,28 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                 children: [
                   Text(
                     'Confirmar para o Torneio?',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.grey.shade800),
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey.shade800),
                   ),
                   const SizedBox(height: 16),
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: typeColor.withOpacity(0.1),
-                   child: PokemonNetImage(
-                     imageUrl: currentPokemon.imageUrl,
-                     pokemonId: currentPokemon.id,
-                     height: 80,
-                   ),
+                    child: PokemonNetImage(
+                      imageUrl: currentPokemon.imageUrl,
+                      pokemonId: currentPokemon.id,
+                      height: 80,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
                     currentPokemon.name.toUpperCase(),
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1),
                   ),
                   const SizedBox(height: 24),
                   Row(
@@ -1362,7 +1548,8 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         onPressed: () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.grey.shade700,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
                           side: BorderSide(color: Colors.grey.shade300),
                         ),
                         child: Text("Trocar Pokémon"),
@@ -1384,8 +1571,10 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.amber.shade700,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 24, vertical: 12),
                         ),
                       ),
                     ],
@@ -1400,34 +1589,34 @@ class _PokemonScreenState extends State<PokemonScreen> with TickerProviderStateM
   }
 
   void _searchPokemonTrigger(String query) async {
-     if (query.isEmpty) {
-       setState(() {
-         currentSearchQuery = '';
-         isSearchMode = false;
-         searchResults = [];
-         originalSearchResults = [];
-         allSearchResults = [];
-         currentPage = 1;
-         totalPages = 1;
-         searchError = '';
-       });
-       _loadInitialPokemonList();
-       return;
-     }
+    if (query.isEmpty) {
+      setState(() {
+        currentSearchQuery = '';
+        isSearchMode = false;
+        searchResults = [];
+        originalSearchResults = [];
+        allSearchResults = [];
+        currentPage = 1;
+        totalPages = 1;
+        searchError = '';
+      });
+      _loadInitialPokemonList();
+      return;
+    }
 
-     setState(() {
-       isSearching = true;
-       searchError = '';
-       currentSearchQuery = query;
-       isSearchMode = true;
-     });
-     try {
-       print("SearchPokemonTrigger: Buscando resultados brutos para '$query'");
-       final results = await _pokemonListService.searchPokemonByName(query);
-       _handleSearchResults(results);
-     } catch (e) {
-       _handleSearchError('Erro ao buscar Pokémon: $e');
-       if(mounted) setState(() => isSearching = false);
-     }
-   }
-} 
+    setState(() {
+      isSearching = true;
+      searchError = '';
+      currentSearchQuery = query;
+      isSearchMode = true;
+    });
+    try {
+      print("SearchPokemonTrigger: Buscando resultados brutos para '$query'");
+      final results = await _pokemonListService.searchPokemonByName(query);
+      _handleSearchResults(results);
+    } catch (e) {
+      _handleSearchError('Erro ao buscar Pokémon: $e');
+      if (mounted) setState(() => isSearching = false);
+    }
+  }
+}

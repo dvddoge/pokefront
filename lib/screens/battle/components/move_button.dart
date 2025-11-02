@@ -5,12 +5,14 @@ import '../utils/type_utils.dart';
 class MoveButton extends StatelessWidget {
   final PokemonMove move;
   final bool isDisabled;
+  final int remainingPP;
   final Function(PokemonMove) onMoveSelected;
 
   const MoveButton({
     Key? key,
     required this.move,
     required this.isDisabled,
+    required this.remainingPP,
     required this.onMoveSelected,
   }) : super(key: key);
 
@@ -125,8 +127,10 @@ class MoveButton extends StatelessWidget {
                               ),
                               const SizedBox(width: 4),
                               Flexible(
-                                child: Text(
-                                  'PWR ${move.damage.toInt()}',
+                              child: Text(
+                                  move.power != null
+                                      ? 'PWR ${move.power!.toInt()}'
+                                      : 'STATUS',
                                   style: TextStyle(
                                     color: typeColor,
                                     fontWeight: FontWeight.w600,
@@ -176,6 +180,46 @@ class MoveButton extends StatelessWidget {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.deepPurple.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.deepPurple.withOpacity(0.2),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.battery_full,
+                          size: 16,
+                          color: Colors.deepPurple,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'PP $remainingPP/${move.pp}',
+                          style: const TextStyle(
+                            color: Colors.deepPurple,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          move.damageClass.toUpperCase(),
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),

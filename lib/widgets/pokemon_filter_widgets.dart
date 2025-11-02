@@ -175,6 +175,268 @@ class PowerRangeFilter extends StatefulWidget {
   _PowerRangeFilterState createState() => _PowerRangeFilterState();
 }
 
+class HeightRangeFilter extends StatefulWidget {
+  final RangeValues heightRange;
+  final Function(RangeValues) onHeightRangeChanged;
+
+  const HeightRangeFilter({
+    Key? key,
+    required this.heightRange,
+    required this.onHeightRangeChanged,
+  }) : super(key: key);
+
+  @override
+  State<HeightRangeFilter> createState() => _HeightRangeFilterState();
+}
+
+class _HeightRangeFilterState extends State<HeightRangeFilter> {
+  Timer? _debounce;
+  RangeValues _currentRange = const RangeValues(0, 20);
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRange = widget.heightRange;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onRangeChanged(RangeValues values) {
+    setState(() => _currentRange = values);
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      widget.onHeightRangeChanged(values);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Altura (m):',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const Spacer(),
+            if (_currentRange != const RangeValues(0, 20))
+              TextButton(
+                onPressed: () {
+                  setState(() => _currentRange = const RangeValues(0, 20));
+                  widget.onHeightRangeChanged(const RangeValues(0, 20));
+                },
+                child: Text('Limpar', style: TextStyle(color: Colors.red[700], fontSize: 12)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildMiniBadge('Min: ${_currentRange.start.toStringAsFixed(1)}'),
+                    _buildMiniBadge('Max: ${_currentRange.end.toStringAsFixed(1)}'),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    activeTrackColor: Colors.red[700],
+                    inactiveTrackColor: Colors.red[100],
+                    thumbColor: Colors.red[700],
+                    overlayColor: Colors.red[700]?.withOpacity(0.2),
+                  ),
+                  child: RangeSlider(
+                    values: _currentRange,
+                    min: 0,
+                    max: 20,
+                    divisions: 200, // 0.1m steps
+                    labels: RangeLabels(
+                      _currentRange.start.toStringAsFixed(1),
+                      _currentRange.end.toStringAsFixed(1),
+                    ),
+                    onChanged: _onRangeChanged,
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('0', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('20', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.red[700],
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
+class WeightRangeFilter extends StatefulWidget {
+  final RangeValues weightRange;
+  final Function(RangeValues) onWeightRangeChanged;
+
+  const WeightRangeFilter({
+    Key? key,
+    required this.weightRange,
+    required this.onWeightRangeChanged,
+  }) : super(key: key);
+
+  @override
+  State<WeightRangeFilter> createState() => _WeightRangeFilterState();
+}
+
+class _WeightRangeFilterState extends State<WeightRangeFilter> {
+  Timer? _debounce;
+  RangeValues _currentRange = const RangeValues(0, 1000);
+
+  @override
+  void initState() {
+    super.initState();
+    _currentRange = widget.weightRange;
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onRangeChanged(RangeValues values) {
+    setState(() => _currentRange = values);
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      widget.onWeightRangeChanged(values);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Text(
+              'Peso (kg):',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const Spacer(),
+            if (_currentRange != const RangeValues(0, 1000))
+              TextButton(
+                onPressed: () {
+                  setState(() => _currentRange = const RangeValues(0, 1000));
+                  widget.onWeightRangeChanged(const RangeValues(0, 1000));
+                },
+                child: Text('Limpar', style: TextStyle(color: Colors.red[700], fontSize: 12)),
+              ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _buildMiniBadge('Min: ${_currentRange.start.toInt()}'),
+                    _buildMiniBadge('Max: ${_currentRange.end.toInt()}'),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    activeTrackColor: Colors.red[700],
+                    inactiveTrackColor: Colors.red[100],
+                    thumbColor: Colors.red[700],
+                    overlayColor: Colors.red[700]?.withOpacity(0.2),
+                  ),
+                  child: RangeSlider(
+                    values: _currentRange,
+                    min: 0,
+                    max: 1000,
+                    divisions: 100,
+                    labels: RangeLabels(
+                      _currentRange.start.round().toString(),
+                      _currentRange.end.round().toString(),
+                    ),
+                    onChanged: _onRangeChanged,
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('0', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('1000', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMiniBadge(String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+      decoration: BoxDecoration(
+        color: Colors.red[700],
+        borderRadius: BorderRadius.circular(3),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+}
+
 class _PowerRangeFilterState extends State<PowerRangeFilter> {
   Timer? _debounce;
   RangeValues _currentRange = const RangeValues(0, 1000);
