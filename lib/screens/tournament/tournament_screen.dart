@@ -15,13 +15,15 @@ import 'components/victory_particles.dart';
 class TournamentScreen extends StatefulWidget {
   final Pokemon playerPokemon;
 
-  const TournamentScreen({Key? key, required this.playerPokemon}) : super(key: key);
+  const TournamentScreen({Key? key, required this.playerPokemon})
+      : super(key: key);
 
   @override
   _TournamentScreenState createState() => _TournamentScreenState();
 }
 
-class _TournamentScreenState extends State<TournamentScreen> with TickerProviderStateMixin {
+class _TournamentScreenState extends State<TournamentScreen>
+    with TickerProviderStateMixin {
   final List<Opponent> opponents = TournamentService.getTournamentOpponents();
   late TournamentProgress progress;
   late AnimationController _progressAnimationController;
@@ -35,27 +37,28 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
   void initState() {
     super.initState();
     progress = TournamentProgress(
-      tournamentId: 'champions_tournament_${DateTime.now().millisecondsSinceEpoch}',
+      tournamentId:
+          'champions_tournament_${DateTime.now().millisecondsSinceEpoch}',
       startTime: DateTime.now(),
     );
-    
+
     _progressAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
       vsync: this,
     );
-    
+
     _headerAnimationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
     );
-    
+
     _bracketAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1200),
       vsync: this,
     );
-    
+
     _startTimer();
-    
+
     // Inicia animações
     _headerAnimationController.forward();
     Future.delayed(const Duration(milliseconds: 300), () {
@@ -83,7 +86,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
   }
 
   Future<Pokemon> _fetchOpponentPokemon(int id, int level) async {
-    final response = await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$id'));
+    final response =
+        await http.get(Uri.parse('https://pokeapi.co/api/v2/pokemon/$id'));
     if (response.statusCode == 200) {
       final pokemonData = Pokemon.fromDetailJson(json.decode(response.body));
       return pokemonData.copyWith(level: level);
@@ -100,8 +104,9 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
     final battleStartTime = DateTime.now();
 
     try {
-      final opponentPokemon = await _fetchOpponentPokemon(opponent.pokemonId, opponent.pokemonLevel);
-      
+      final opponentPokemon = await _fetchOpponentPokemon(
+          opponent.pokemonId, opponent.pokemonLevel);
+
       final result = await Navigator.push(
         context,
         MaterialPageRoute(
@@ -115,7 +120,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       final battleEndTime = DateTime.now();
       final battleDuration = battleEndTime.difference(battleStartTime);
 
-  if (result == true) {
+      if (result == true) {
         // Calcula pontuação da batalha
         final battleScore = TournamentService.calculateBattleScore(
           opponentLevel: opponent.pokemonLevel,
@@ -160,12 +165,12 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
         });
 
         _progressAnimationController.forward();
-        
+
         // Ativa partículas de vitória
         setState(() {
           showVictoryParticles = true;
         });
-        
+
         Future.delayed(const Duration(seconds: 2), () {
           if (mounted) {
             setState(() {
@@ -173,13 +178,12 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
             });
           }
         });
-        
+
         // Verifica conquistas desbloqueadas
         _checkAndShowAchievements();
-        
+
         // Mostra pontuação da batalha
         _showBattleScoreDialog(battleScore, opponent.name);
-        
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -224,9 +228,10 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       tournamentScore: progress.currentScore,
     );
 
-  // Atualiza milestones baseados em estatísticas
-  final updatedStats = await TournamentService.loadPlayerStats();
-    final unlockedByStats = await AchievementService.onStatsUpdated(updatedStats);
+    // Atualiza milestones baseados em estatísticas
+    final updatedStats = await TournamentService.loadPlayerStats();
+    final unlockedByStats =
+        await AchievementService.onStatsUpdated(updatedStats);
     if (unlockedByStats.isNotEmpty) {
       for (final def in unlockedByStats) {
         _showGenericAchievementToast(def.name, '+${def.points} XP');
@@ -235,8 +240,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
     }
 
     // Carrega estatísticas atualizadas
-  final stats = await TournamentService.loadPlayerStats();
-    
+    final stats = await TournamentService.loadPlayerStats();
+
     // Calcula recompensas
     final earnedRewards = await TournamentService.calculateEarnedRewards(
       progress: progress,
@@ -258,7 +263,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                 color: Colors.purple[700],
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Icon(Icons.emoji_events, color: Colors.white, size: 20),
+              child:
+                  const Icon(Icons.emoji_events, color: Colors.white, size: 20),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -343,14 +349,15 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
   // Função para verificar e exibir conquistas em tempo real
   void _checkAndShowAchievements() async {
     final stats = await TournamentService.loadPlayerStats();
-    
+
     // Verifica se há novas conquistas baseadas no progresso atual
-    final tempProgress = progress.copyWith(isCompleted: false); // Para não calcular medalhas ainda
+    final tempProgress = progress.copyWith(
+        isCompleted: false); // Para não calcular medalhas ainda
     final newAchievements = await TournamentService.calculateEarnedRewards(
       progress: tempProgress,
       stats: stats,
     );
-    
+
     // Mostra conquistas desbloqueadas
     if (newAchievements.isNotEmpty && mounted) {
       for (final achievement in newAchievements) {
@@ -363,7 +370,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
 
   void _showAchievementUnlocked(TournamentReward achievement) {
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
@@ -444,7 +451,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                 style: TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 20),
-              
+
               // Estatísticas finais
               Container(
                 padding: const EdgeInsets.all(16),
@@ -478,15 +485,17 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                   ],
                 ),
               ),
-              
+
               if (medal != null) ...[
                 const SizedBox(height: 20),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: TournamentService.getMedalColor(medal).withOpacity(0.1),
+                    color: TournamentService.getMedalColor(medal)
+                        .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: TournamentService.getMedalColor(medal)),
+                    border: Border.all(
+                        color: TournamentService.getMedalColor(medal)),
                   ),
                   child: Column(
                     children: [
@@ -506,7 +515,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                   ),
                 ),
               ],
-              
+
               if (rewards.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 const Text(
@@ -515,46 +524,47 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                 ),
                 const SizedBox(height: 12),
                 ...rewards.map((reward) => Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green[50],
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.green[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.emoji_events, color: Colors.green[700]),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              reward.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.green[50],
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green[200]!),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.emoji_events, color: Colors.green[700]),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  reward.name,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold),
+                                ),
+                                Text(
+                                  reward.description,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
+                          if (reward.pointsValue > 0)
                             Text(
-                              reward.description,
+                              '+${reward.pointsValue}',
                               style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                          ],
-                        ),
+                        ],
                       ),
-                      if (reward.pointsValue > 0)
-                        Text(
-                          '+${reward.pointsValue}',
-                          style: TextStyle(
-                            color: Colors.green[700],
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                    ],
-                  ),
-                )),
+                    )),
               ],
             ],
           ),
@@ -565,7 +575,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
               Navigator.of(context).pop();
               setState(() {
                 progress = TournamentProgress(
-                  tournamentId: 'champions_tournament_${DateTime.now().millisecondsSinceEpoch}',
+                  tournamentId:
+                      'champions_tournament_${DateTime.now().millisecondsSinceEpoch}',
                   startTime: DateTime.now(),
                 );
               });
@@ -630,7 +641,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                   animation: _headerAnimationController,
                   builder: (context, child) {
                     return Transform.translate(
-                      offset: Offset(0, -50 * (1 - _headerAnimationController.value)),
+                      offset: Offset(
+                          0, -50 * (1 - _headerAnimationController.value)),
                       child: Opacity(
                         opacity: _headerAnimationController.value,
                         child: _buildProgressHeader(),
@@ -638,7 +650,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                     );
                   },
                 ),
-                
+
                 // Bracket visual com scroll horizontal
                 Expanded(
                   child: AnimatedBuilder(
@@ -658,7 +670,8 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
                               onPlayerTap: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
-                                    content: Text('Seu Pokémon: ${widget.playerPokemon.name}'),
+                                    content: Text(
+                                        'Seu Pokémon: ${widget.playerPokemon.name}'),
                                     backgroundColor: Colors.blue[700],
                                   ),
                                 );
@@ -675,7 +688,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
               ],
             ),
           ),
-          
+
           // Partículas de vitória
           if (showVictoryParticles)
             Positioned.fill(
@@ -699,7 +712,7 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -743,8 +756,9 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
               builder: (context, child) {
                 return FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: (progress.currentOpponentIndex / opponents.length) * 
-                              _progressAnimationController.value,
+                  widthFactor:
+                      (progress.currentOpponentIndex / opponents.length) *
+                          _progressAnimationController.value,
                   child: Container(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
@@ -762,13 +776,14 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
     );
   }
 
-  Widget _buildStatCard(String label, String value, Color color, IconData icon) {
+  Widget _buildStatCard(
+      String label, String value, Color color, IconData icon) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 24),
@@ -794,4 +809,4 @@ class _TournamentScreenState extends State<TournamentScreen> with TickerProvider
       ],
     );
   }
-} 
+}

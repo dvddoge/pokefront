@@ -40,17 +40,18 @@ class SettingsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       'Configurações do App',
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Gerencie o cache e outras configurações',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
+                            color: Colors.white.withValues(alpha: 0.9),
+                          ),
                     ),
                   ],
                 ),
@@ -70,9 +71,10 @@ class SettingsScreen extends StatelessWidget {
                         const SizedBox(width: 8),
                         Text(
                           'Sobre o Cache',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                         ),
                       ],
                     ),
@@ -118,7 +120,8 @@ class SettingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildFeatureItem(BuildContext context, String title, String description, IconData icon) {
+  Widget _buildFeatureItem(
+      BuildContext context, String title, String description, IconData icon) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -137,14 +140,14 @@ class SettingsScreen extends StatelessWidget {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 Text(
                   description,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                        color: Colors.grey[600],
+                      ),
                 ),
               ],
             ),
@@ -153,4 +156,4 @@ class SettingsScreen extends StatelessWidget {
       ),
     );
   }
-} 
+}

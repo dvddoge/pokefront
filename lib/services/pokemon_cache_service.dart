@@ -1,4 +1,5 @@
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:flutter/foundation.dart';
 import '../models/pokemon.dart';
 import 'pokemon_list_service.dart';
 
@@ -14,7 +15,8 @@ class PokemonCacheService {
   static late Box _statsBox;
   static late Box _metadataBox;
 
-  static Map<String, List<int>> _searchIndex = {}; // Índice de busca em memória
+  static final Map<String, List<int>> _searchIndex =
+      {}; // Índice de busca em memória
   static PokemonListService? _pokemonListService;
 
   // Inicialização do cache
@@ -28,7 +30,7 @@ class PokemonCacheService {
     await _checkExpiration();
     await _buildSearchIndex();
 
-    print(
+    debugPrint(
         'PokemonCacheService (Hive) inicializado com ${_pokemonBox.length} Pokémon');
   }
 
@@ -39,7 +41,7 @@ class PokemonCacheService {
       final cleanupDate = DateTime.parse(lastCleanup);
       if (DateTime.now().difference(cleanupDate).inDays >
           _cacheExpirationDays) {
-        print('Cache expirado, limpando...');
+        debugPrint('Cache expirado, limpando...');
         await clearCache();
         return;
       }
@@ -61,7 +63,7 @@ class PokemonCacheService {
     await _pokemonBox.deleteAll(keysToRemove);
     await _statsBox.deleteAll(keysToRemove);
 
-    print('Cache LRU aplicado: removidos ${keysToRemove.length} itens');
+    debugPrint('Cache LRU aplicado: removidos ${keysToRemove.length} itens');
   }
 
   // Construir índice de busca para busca rápida
@@ -252,7 +254,7 @@ class PokemonCacheService {
     // Limpar também o cache legado se ainda existir
     _pokemonListService?.clearAllCaches();
 
-    print('Cache Hive completamente limpo');
+    debugPrint('Cache Hive completamente limpo');
   }
 
   // Forçar salvamento no disco (Hive faz isso auto, mas mantemos interface)
@@ -267,6 +269,6 @@ class PokemonCacheService {
     for (final pokemon in pokemons) {
       await setPokemon(pokemon);
     }
-    print('Cache pré-aquecido com ${pokemons.length} Pokémon');
+    debugPrint('Cache pré-aquecido com ${pokemons.length} Pokémon');
   }
 }

@@ -96,9 +96,9 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   @override
   void initState() {
     super.initState();
-    
+
     try {
-      print('Inicializando tela de batalha');
+      debugPrint('Inicializando tela de batalha');
       _isOpeningTransitionPlaying = widget.playOpeningAnimation;
       _setupAnimations();
 
@@ -110,16 +110,16 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         _showTransition = true;
         _battleScreenReady = false;
       });
-      
-      print('Estado inicial da tela de batalha:');
-      print('- _showTransition: $_showTransition');
-      print('- _battleScreenReady: $_battleScreenReady');
-      
+
+      debugPrint('Estado inicial da tela de batalha:');
+      debugPrint('- _showTransition: $_showTransition');
+      debugPrint('- _battleScreenReady: $_battleScreenReady');
+
       // Carrega os dados imediatamente para garantir que estejam disponíveis
       // quando a animação de transição terminar
       _loadPokemonData();
     } catch (e) {
-      print('Erro ao inicializar tela de batalha: $e');
+      debugPrint('Erro ao inicializar tela de batalha: $e');
     }
   }
 
@@ -128,13 +128,18 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     _shakeAnimationController = AnimationUtils.createShakeController(this);
     _damageAnimationController = AnimationUtils.createDamageController(this);
     _attackAnimationController = AnimationUtils.createAttackController(this);
-    _backgroundAnimationController = AnimationUtils.createBackgroundController(this);
-    _floatingAnimationController = AnimationUtils.createFloatingController(this);
+    _backgroundAnimationController =
+        AnimationUtils.createBackgroundController(this);
+    _floatingAnimationController =
+        AnimationUtils.createFloatingController(this);
     _flashAnimationController = AnimationUtils.createFlashController(this);
 
-    _attackAnimation = AnimationUtils.createAttackAnimation(_attackAnimationController);
-    _backgroundAnimation = AnimationUtils.createBackgroundAnimation(_backgroundAnimationController);
-    _floatingAnimation = AnimationUtils.createFloatingAnimation(_floatingAnimationController);
+    _attackAnimation =
+        AnimationUtils.createAttackAnimation(_attackAnimationController);
+    _backgroundAnimation = AnimationUtils.createBackgroundAnimation(
+        _backgroundAnimationController);
+    _floatingAnimation =
+        AnimationUtils.createFloatingAnimation(_floatingAnimationController);
   }
 
   List<Pokemon> _prepareInitialTeam(
@@ -177,7 +182,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         hp: pokemon.hp,
         maxHp: pokemon.maxHp,
         statStages: pokemon.statStages,
-        ability: detailed.ability.isNotEmpty ? detailed.ability : pokemon.ability,
+        ability:
+            detailed.ability.isNotEmpty ? detailed.ability : pokemon.ability,
         heldItem: detailed.heldItem ?? pokemon.heldItem,
       );
     } catch (_) {
@@ -234,7 +240,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   void _setStatusCounter(BattleActor actor, int counter) {
-    final current = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final current =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     final updated = current.copyWith(statusCounter: counter);
     setState(() {
       _updateActivePokemon(actor, updated);
@@ -287,7 +294,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     String? reason,
   }) async {
     if (amount <= 0) return;
-    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemon =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     if (pokemon.hp <= 0 || pokemon.hp >= pokemon.maxHp) {
       if (reason != null && reason.isNotEmpty) {
         _log(reason);
@@ -321,13 +329,16 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     final types = pokemon.types.map((t) => t.toLowerCase()).toList();
     final ability = pokemon.ability.toLowerCase();
 
-    if (pokemon.status != StatusCondition.none && status != StatusCondition.none) {
+    if (pokemon.status != StatusCondition.none &&
+        status != StatusCondition.none) {
       return '${pokemon.name} já possui uma condição de status.';
     }
 
     switch (status) {
       case StatusCondition.burn:
-        if (types.contains('fire') || ability == 'water-veil' || ability == 'flash-fire') {
+        if (types.contains('fire') ||
+            ability == 'water-veil' ||
+            ability == 'flash-fire') {
           return '${pokemon.name} é imune a queimaduras.';
         }
         break;
@@ -337,13 +348,15 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         }
         break;
       case StatusCondition.poison:
-        if (types.contains('poison') || types.contains('steel') ||
+        if (types.contains('poison') ||
+            types.contains('steel') ||
             ability == 'immunity') {
           return '${pokemon.name} não pode ser envenenado.';
         }
         break;
       case StatusCondition.toxic:
-        if (types.contains('poison') || types.contains('steel') ||
+        if (types.contains('poison') ||
+            types.contains('steel') ||
             ability == 'immunity') {
           return '${pokemon.name} não pode ser gravemente envenenado.';
         }
@@ -366,7 +379,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   void _changeStatStage(BattleActor actor, String stat, int delta) {
-    final current = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final current =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     final stages = Map<String, int>.from(current.statStages);
     final currentValue = stages[stat] ?? 0;
     final newStage = (currentValue + delta).clamp(-6, 6);
@@ -401,9 +415,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
 
     move.statChanges.forEach((stat, change) {
       if (change == 0) return;
-      final targetActor = move.targetsSelf
-          ? attackerActor
-          : defenderActor;
+      final targetActor = move.targetsSelf ? attackerActor : defenderActor;
       _changeStatStage(targetActor, stat, change);
     });
   }
@@ -456,7 +468,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<void> _checkItemAfterDamage(BattleActor actor) async {
-    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemon =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     final item = pokemon.heldItem?.toLowerCase();
     if (item == null || item.isEmpty) return;
 
@@ -477,7 +490,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<void> _handleEndTurnItems(BattleActor actor) async {
-    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemon =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     final item = pokemon.heldItem?.toLowerCase();
     if (item == null || item.isEmpty || pokemon.hp <= 0) return;
 
@@ -492,9 +506,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
 
   Future<void> _startBattleMusic() async {
     try {
-      await _audioService.playMusic('sounds/music/assets_audio_music_wild-battle.ogg');
+      await _audioService
+          .playMusic('sounds/music/assets_audio_music_wild-battle.ogg');
     } catch (e) {
-      print('Erro ao tocar música de batalha: $e');
+      debugPrint('Erro ao tocar música de batalha: $e');
     }
   }
 
@@ -524,9 +539,9 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
 
   Future<void> _loadPokemonData() async {
     if (!mounted) return;
-    
-    print('Carregando dados dos Pokémon');
-    
+
+    debugPrint('Carregando dados dos Pokémon');
+
     try {
       final hydratedPlayerTeam =
           await Future.wait(_playerTeam.map(_hydratePokemon));
@@ -560,13 +575,13 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         battleLog = 'Um ${_opponentActive.name} selvagem apareceu!';
       });
 
-      print('Dados carregados com sucesso. Tela de batalha pronta.');
-      print(
+      debugPrint('Dados carregados com sucesso. Tela de batalha pronta.');
+      debugPrint(
           'Jogador (${_playerActive.name}) - Movimentos: ${_movesFor(_playerActive).length}, HP: ${_playerActive.hp}/${_playerActive.maxHp}');
-      print(
+      debugPrint(
           'Oponente (${_opponentActive.name}) - Movimentos: ${_movesFor(_opponentActive).length}, HP: ${_opponentActive.hp}/${_opponentActive.maxHp}');
     } catch (e) {
-      print('Erro ao carregar dados da batalha: $e');
+      debugPrint('Erro ao carregar dados da batalha: $e');
       if (mounted) {
         setState(() {
           isLoading = false;
@@ -580,9 +595,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     if (_isResolvingTurn || !_battleScreenReady) return;
     final moves = _movesFor(_playerActive);
     final moveIndex = moves.indexOf(move);
-    final remainingPp = moveIndex >= 0
-        ? _remainingPpFor(_playerActive)[moveIndex]
-        : 0;
+    final remainingPp =
+        moveIndex >= 0 ? _remainingPpFor(_playerActive)[moveIndex] : 0;
 
     if (remainingPp <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -602,8 +616,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     final available = _playerTeam
         .asMap()
         .entries
-        .where((entry) =>
-            entry.key != _playerActiveIndex && entry.value.hp > 0)
+        .where((entry) => entry.key != _playerActiveIndex && entry.value.hp > 0)
         .toList();
 
     if (available.isEmpty) {
@@ -636,7 +649,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
                 final pokemon = entry.value;
                 return ListTile(
                   leading: CircleAvatar(
-                    backgroundImage: CachedNetworkImageProvider(pokemon.imageUrl),
+                    backgroundImage:
+                        CachedNetworkImageProvider(pokemon.imageUrl),
                   ),
                   title: Text(pokemon.name),
                   subtitle: Text(
@@ -671,7 +685,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         });
       }
 
-      final action = actor == BattleActor.player ? playerAction : opponentAction;
+      final action =
+          actor == BattleActor.player ? playerAction : opponentAction;
       final didAct = await _performAction(actor, action);
       if (!didAct) {
         continue;
@@ -696,9 +711,13 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   BattleAction _decideOpponentAction(BattleAction playerAction) {
     final current = _opponentActive;
     if (current.hp / current.maxHp < 0.3 && _hasAvailableSwitch(false)) {
-      final targetIndex = _opponentTeam.asMap().entries.firstWhere(
-        (entry) => entry.key != _opponentActiveIndex && entry.value.hp > 0,
-      ).key;
+      final targetIndex = _opponentTeam
+          .asMap()
+          .entries
+          .firstWhere(
+            (entry) => entry.key != _opponentActiveIndex && entry.value.hp > 0,
+          )
+          .key;
       return BattleAction.switchPokemon(targetIndex);
     }
 
@@ -760,9 +779,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
       speed = (speed * 0.5).floor();
     }
     final stage = pokemon.statStages['speed'] ?? 0;
-    final modifier = stage >= 0
-        ? (2 + stage) / 2.0
-        : 2.0 / (2 - stage);
+    final modifier = stage >= 0 ? (2 + stage) / 2.0 : 2.0 / (2 - stage);
     return (speed * modifier).floor();
   }
 
@@ -770,8 +787,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     final team = isPlayer ? _playerTeam : _opponentTeam;
     final activeIndex = isPlayer ? _playerActiveIndex : _opponentActiveIndex;
     return team.asMap().entries.any(
-      (entry) => entry.key != activeIndex && entry.value.hp > 0,
-    );
+          (entry) => entry.key != activeIndex && entry.value.hp > 0,
+        );
   }
 
   Future<bool> _performAction(BattleActor actor, BattleAction action) async {
@@ -814,35 +831,47 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
           _opponentActiveIndex = newIndex;
         }
         battleLog =
-            '${isPlayer ? _playerActive.name : _opponentActive.name} entrou na batalha!';
+            'Vai! ${isPlayer ? _playerActive.name : _opponentActive.name}!';
       });
     }
   }
 
   Future<bool> _performMove(bool isPlayer, PokemonMove move) async {
     final attackerActor = isPlayer ? BattleActor.player : BattleActor.opponent;
-    final defenderActor = _opposite(attackerActor);
-    final initialAttacker = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
-
-    if (!_consumePp(initialAttacker, move)) {
-      return false;
-    }
+    final defenderActor = isPlayer ? BattleActor.opponent : BattleActor.player;
 
     if (!await _canAct(attackerActor)) {
       return true;
     }
 
-    _log('${initialAttacker.name} usa ${move.name}!');
+    if (!_consumePp(isPlayer ? _playerActive : _opponentActive, move)) {
+      _log('Sem PP para este movimento!');
+      return false;
+    }
+
+    _log(BattleService.generateBattleLog(
+      attackerName: isPlayer ? _playerActive.name : _opponentActive.name,
+      moveName: move.name,
+      isHit: true,
+    ));
 
     await _attackAnimationController.forward();
     _attackAnimationController.reset();
 
-    if (!BattleService.checkHitSuccess(move.accuracy)) {
-      _log('O ataque de ${initialAttacker.name} errou!');
+    if (await _handleAbilityPreHit(defenderActor, move)) {
       return true;
     }
 
-    if (await _handleAbilityPreHit(defenderActor, move)) {
+    final attacker = isPlayer ? _playerActive : _opponentActive;
+    final defender = isPlayer ? _opponentActive : _playerActive;
+
+    if (!BattleService.checkHitSuccess(
+        move.accuracy.toDouble(), attacker, defender)) {
+      _log(BattleService.generateBattleLog(
+        attackerName: attacker.name,
+        moveName: move.name,
+        isHit: false,
+      ));
       return true;
     }
 
@@ -851,8 +880,10 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     bool flinchApplied = false;
 
     for (var i = 0; i < hits; i++) {
-      final attacker = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
-      final defender = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+      final attacker =
+          attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      final defender =
+          defenderActor == BattleActor.player ? _playerActive : _opponentActive;
 
       final damage = BattleService.calculateDamage(
         move: move,
@@ -875,7 +906,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
 
       totalDamage += inflicted;
 
-      final defenderAfter = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+      final defenderAfter =
+          defenderActor == BattleActor.player ? _playerActive : _opponentActive;
       if (!flinchApplied &&
           move.flinchChance != null &&
           move.flinchChance! > 0 &&
@@ -885,7 +917,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
           if (_hasAbility(defenderAfter, 'inner-focus')) {
             _log('${defenderAfter.name} manteve o foco e não se abalou!');
           } else if (_blocksSecondaryEffects(defenderAfter)) {
-            _log('${defenderAfter.name} ignorou o efeito adicional graças a Shield Dust!');
+            _log(
+                '${defenderAfter.name} ignorou o efeito adicional graças a Shield Dust!');
           } else {
             _flinchNextTurn.add(defenderAfter.id);
             _log('${defenderAfter.name} ficou atordoado!');
@@ -899,7 +932,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     }
 
     if (move.healPercent != null && move.healPercent! > 0) {
-      final healer = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      final healer =
+          attackerActor == BattleActor.player ? _playerActive : _opponentActive;
       await _healPokemon(
         attackerActor,
         healer.maxHp * move.healPercent!,
@@ -908,7 +942,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     }
 
     if (totalDamage > 0 && move.drain != null) {
-      final lifesteal = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      final lifesteal =
+          attackerActor == BattleActor.player ? _playerActive : _opponentActive;
       await _healPokemon(
         attackerActor,
         totalDamage * move.drain!,
@@ -917,7 +952,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     }
 
     if (totalDamage > 0 && move.recoil != null) {
-      final recoilTarget = attackerActor == BattleActor.player ? _playerActive : _opponentActive;
+      final recoilTarget =
+          attackerActor == BattleActor.player ? _playerActive : _opponentActive;
       await _applyDamage(
         attackerActor,
         totalDamage * move.recoil!,
@@ -950,7 +986,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<bool> _canAct(BattleActor actor) async {
-    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemon =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     final pokemonId = pokemon.id;
 
     if (_flinchNextTurn.remove(pokemonId)) {
@@ -1052,7 +1089,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     _shakeAnimationController.reset();
 
     if (moveType == 'fire') {
-      final current = defenderActor == BattleActor.player ? _playerActive : _opponentActive;
+      final current =
+          defenderActor == BattleActor.player ? _playerActive : _opponentActive;
       if (current.status == StatusCondition.freeze) {
         _setStatus(defenderActor, StatusCondition.none,
             message: '${current.name} descongelou!');
@@ -1080,7 +1118,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
     if (_random.nextDouble() > move.ailmentChance) return;
 
     final effectActor = move.targetsSelf ? attackerActor : targetActor;
-    final target = effectActor == BattleActor.player ? _playerActive : _opponentActive;
+    final target =
+        effectActor == BattleActor.player ? _playerActive : _opponentActive;
 
     if (!move.targetsSelf && _blocksSecondaryEffects(target)) {
       _log('${target.name} ignorou o efeito adicional graças a Shield Dust!');
@@ -1129,7 +1168,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   void _applyBindingEffect(BattleActor targetActor, PokemonMove move) {
-    final target = targetActor == BattleActor.player ? _playerActive : _opponentActive;
+    final target =
+        targetActor == BattleActor.player ? _playerActive : _opponentActive;
     final minTurns = (move.minTurns ?? 4).clamp(1, 10);
     final maxTurns = (move.maxTurns ?? minTurns).clamp(minTurns, minTurns + 4);
     final turns = maxTurns > minTurns
@@ -1142,7 +1182,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   void _applyConfusion(BattleActor targetActor) {
-    final target = targetActor == BattleActor.player ? _playerActive : _opponentActive;
+    final target =
+        targetActor == BattleActor.player ? _playerActive : _opponentActive;
     if (_hasAbility(target, 'own-tempo')) {
       _log('${target.name} manteve o ritmo e evitou a confusão!');
       return;
@@ -1185,8 +1226,9 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         continue;
       }
 
-      final damage =
-          (pokemon.maxHp * effect.damageFraction).clamp(1, pokemon.maxHp).toDouble();
+      final damage = (pokemon.maxHp * effect.damageFraction)
+          .clamp(1, pokemon.maxHp)
+          .toDouble();
       await _applyDamage(
         actor,
         damage,
@@ -1208,7 +1250,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   Future<void> _applyResidualStatus(BattleActor actor) async {
-    final pokemon = actor == BattleActor.player ? _playerActive : _opponentActive;
+    final pokemon =
+        actor == BattleActor.player ? _playerActive : _opponentActive;
     if (pokemon.status == StatusCondition.none || pokemon.hp <= 0) return;
 
     if (pokemon.status == StatusCondition.poison &&
@@ -1252,10 +1295,8 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
   }
 
   bool _checkBattleEnd() {
-    final playerAlive =
-        _playerTeam.any((pokemon) => pokemon.hp > 0);
-    final opponentAlive =
-        _opponentTeam.any((pokemon) => pokemon.hp > 0);
+    final playerAlive = _playerTeam.any((pokemon) => pokemon.hp > 0);
+    final opponentAlive = _opponentTeam.any((pokemon) => pokemon.hp > 0);
 
     if (playerAlive && opponentAlive) {
       return false;
@@ -1318,7 +1359,7 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
       ]),
       builder: (context, child) {
         Offset finalOffset = Offset.zero;
-        
+
         if ((isPlayerSide && _currentAttackerIsPlayer) ||
             (!isPlayerSide && !_currentAttackerIsPlayer)) {
           finalOffset += attackAnimation.value;
@@ -1333,8 +1374,12 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
         }
 
         finalOffset += Offset(
-          math.sin(floatingAnimation.value * 2 * math.pi + (isPlayerSide ? math.pi : 0)) * 5,
-          math.cos(floatingAnimation.value * 2 * math.pi + (isPlayerSide ? math.pi : 0)) * 8,
+          math.sin(floatingAnimation.value * 2 * math.pi +
+                  (isPlayerSide ? math.pi : 0)) *
+              5,
+          math.cos(floatingAnimation.value * 2 * math.pi +
+                  (isPlayerSide ? math.pi : 0)) *
+              8,
         );
 
         return Transform.translate(
@@ -1358,22 +1403,21 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
 
   // Callback para quando a transição de ABERTURA terminar
   void _onOpeningTransitionComplete() {
-     if (!mounted) return;
-     print("Animação de abertura completa.");
-     setState(() {
-       _isOpeningTransitionPlaying = false; // Esconde a transição
-     });
-     // Pode iniciar a música de batalha aqui
-     _startBattleMusic();
+    if (!mounted) return;
+    debugPrint("Animação de abertura completa.");
+    setState(() {
+      _isOpeningTransitionPlaying = false; // Esconde a transição
+    });
+    // Pode iniciar a música de batalha aqui
+    _startBattleMusic();
   }
 
   @override
   Widget build(BuildContext context) {
     final playerMoves =
         _battleScreenReady ? _movesFor(_playerActive) : <PokemonMove>[];
-    final playerRemainingPp = _battleScreenReady
-        ? _remainingPpFor(_playerActive)
-        : <int>[];
+    final playerRemainingPp =
+        _battleScreenReady ? _remainingPpFor(_playerActive) : <int>[];
     final canSwitch = _battleScreenReady && _hasAvailableSwitch(true);
 
     return WillPopScope(
@@ -1394,191 +1438,194 @@ class _PokemonBattleScreenState extends State<PokemonBattleScreen>
             // Renderiza assim que _battleScreenReady for true (após _loadPokemonData)
             if (_battleScreenReady)
               Stack(
-                 children: [
-                   // Fundo animado
-                   BattleBackground(animation: _backgroundAnimation),
-                   Column(
-                     children: [
-                        Expanded(
-                          child: Stack(
-                           children: [
-                             // Flash de ataque
-                             AnimatedBuilder(
-                               animation: _flashAnimationController,
-                               builder: (context, child) {
-                                 return Container(
-                                   color: Colors.white.withOpacity(_flashAnimationController.value * 0.3),
-                                 );
-                               },
-                             ),
+                children: [
+                  // Fundo animado
+                  BattleBackground(animation: _backgroundAnimation),
+                  Column(
+                    children: [
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            // Flash de ataque
+                            AnimatedBuilder(
+                              animation: _flashAnimationController,
+                              builder: (context, child) {
+                                return Container(
+                                  color: Colors.white.withValues(
+                                      alpha: _flashAnimationController.value *
+                                          0.3),
+                                );
+                              },
+                            ),
 
-                             // Informações dos Pokémon
-                             Padding(
-                               padding: const EdgeInsets.all(16),
-                               child: Column(
-                                 children: [
-                                   Row(
-                                     mainAxisAlignment: MainAxisAlignment.end,
-                                     children: [
+                            // Informações dos Pokémon
+                            Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.end,
+                                    children: [
                                       PokemonInfo(
                                         pokemon: _opponentActive,
                                         hp: _opponentActive.hp,
                                         maxHp: _opponentActive.maxHp,
                                         isLeft: true,
                                       ),
-                                     ],
-                                   ),
-                                   const Spacer(),
-                                   Row(
-                                     mainAxisAlignment: MainAxisAlignment.start,
-                                     children: [
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    children: [
                                       PokemonInfo(
                                         pokemon: _playerActive,
                                         hp: _playerActive.hp,
                                         maxHp: _playerActive.maxHp,
                                         isLeft: false,
                                       ),
-                                     ],
-                                   ),
-                                 ],
-                               ),
-                             ),
-
-                             // Pokémon 2 (Oponente)
-                             Positioned(
-                               right: 30,
-                               top: 120,
-                               child: _buildPokemonImage(
-                                 _opponentActive,
-                                 false,
-                                 _floatingAnimation,
-                                 _attackAnimation,
-                               ),
-                             ),
-
-                             // Pokémon 1 (Jogador)
-                             Positioned(
-                               left: 30,
-                               bottom: 80,
-                               child: _buildPokemonImage(
-                                 _playerActive,
-                                 true,
-                                 _floatingAnimation,
-                                 _attackAnimation,
-                               ),
-                             ),
-                           ],
-                          ),
-                        ),
-                        // Log de batalha
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          color: Colors.white,
-                          width: double.infinity,
-                          child: Text(
-                            battleLog,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                        // Movimentos do jogador (sempre visível)
-                        Container(
-                          width: MediaQuery.of(context).size.width,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: const BorderRadius.only(
-                              topLeft: Radius.circular(24),
-                              topRight: Radius.circular(24),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 8,
-                                offset: const Offset(0, -4),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                                margin: const EdgeInsets.only(bottom: 16),
-                                decoration: BoxDecoration(
-                                  color: Colors.red[700],
-                                  borderRadius: BorderRadius.circular(20),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.red.shade900.withOpacity(0.3),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: const Text(
-                                  'ESCOLHA SEU MOVIMENTO',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    letterSpacing: 1,
-                                    fontFamily: 'Roboto',
+                                    ],
                                   ),
-                                ),
+                                ],
                               ),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    ElevatedButton.icon(
-                                      onPressed: (!isAnimating && canSwitch)
-                                          ? _onPlayerSwitchRequested
-                                          : null,
-                                      icon: const Icon(Icons.swap_horiz),
-                                      label: const Text('Trocar Pokémon'),
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red[600],
-                                        foregroundColor: Colors.white,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            ),
+
+                            // Pokémon 2 (Oponente)
+                            Positioned(
+                              right: 30,
+                              top: 120,
+                              child: _buildPokemonImage(
+                                _opponentActive,
+                                false,
+                                _floatingAnimation,
+                                _attackAnimation,
                               ),
-                              MovesList(
-                                moves: playerMoves,
-                                remainingPP: playerRemainingPp,
-                                isDisabled: isAnimating,
-                                onMoveSelected: _onPlayerMoveSelected,
+                            ),
+
+                            // Pokémon 1 (Jogador)
+                            Positioned(
+                              left: 30,
+                              bottom: 80,
+                              child: _buildPokemonImage(
+                                _playerActive,
+                                true,
+                                _floatingAnimation,
+                                _attackAnimation,
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Log de batalha
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        color: Colors.white,
+                        width: double.infinity,
+                        child: Text(
+                          battleLog,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
-                     ],
-                   ),
-                 ],
+                      ),
+                      // Movimentos do jogador (sempre visível)
+                      Container(
+                        width: MediaQuery.of(context).size.width,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(24),
+                            topRight: Radius.circular(24),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 8,
+                              offset: const Offset(0, -4),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 8),
+                              margin: const EdgeInsets.only(bottom: 16),
+                              decoration: BoxDecoration(
+                                color: Colors.red[700],
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.red.shade900
+                                        .withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Text(
+                                'ESCOLHA SEU MOVIMENTO',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  letterSpacing: 1,
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ),
+                            Padding(
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  ElevatedButton.icon(
+                                    onPressed: (!isAnimating && canSwitch)
+                                        ? _onPlayerSwitchRequested
+                                        : null,
+                                    icon: const Icon(Icons.swap_horiz),
+                                    label: const Text('Trocar Pokémon'),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.red[600],
+                                      foregroundColor: Colors.white,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            MovesList(
+                              moves: playerMoves,
+                              remainingPP: playerRemainingPp,
+                              isDisabled: isAnimating,
+                              onMoveSelected: _onPlayerMoveSelected,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
 
             // Indicador de Loading
             // Mostra se os dados ainda não carregaram E a transição de abertura não está tocando
             if (!_battleScreenReady && !_isOpeningTransitionPlaying)
-               const Center(child: CircularProgressIndicator()),
+              const Center(child: CircularProgressIndicator()),
 
             // Transição de ABERTURA
             // Mostra se o estado _isOpeningTransitionPlaying for true
             if (_isOpeningTransitionPlaying)
               BattleTransition(
-                phase: TransitionPhase.opening, // Executa apenas a abertura
+                phase: TransitionPhase.opening,
                 onMidpoint: () {
-                   // Chamado no início da fase de abertura.
-                   // _battleScreenReady pode ou não ser true aqui, dependendo do _loadPokemonData.
-                   print("BattleTransition (opening): Midpoint Callback Triggered. Battle Ready: $_battleScreenReady");
+                  debugPrint(
+                      "BattleTransition (opening): Midpoint Callback Triggered. Battle Ready: $_battleScreenReady");
                 },
-                onTransitionComplete: _onOpeningTransitionComplete, // Callback para esconder a transição
+                onTransitionComplete: _onOpeningTransitionComplete,
               ),
           ],
         ),

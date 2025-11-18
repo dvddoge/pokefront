@@ -130,16 +130,16 @@ class ParticlePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     for (final particle in particles) {
       final paint = Paint()
-        ..color = particle.color.withOpacity(1.0 - animationValue)
+        ..color = particle.color.withValues(alpha: 1.0 - animationValue)
         ..style = PaintingStyle.fill;
 
       // Atualiza posição da partícula
-      final currentX = particle.x * size.width + 
+      final currentX = particle.x * size.width +
           (particle.velocityX * animationValue * size.width * 0.5);
-      final currentY = particle.y * size.height + 
+      final currentY = particle.y * size.height +
           (particle.velocityY * animationValue * size.height * 0.5);
-      final currentRotation = particle.rotation + 
-          (particle.rotationSpeed * animationValue);
+      final currentRotation =
+          particle.rotation + (particle.rotationSpeed * animationValue);
 
       canvas.save();
       canvas.translate(currentX, currentY);
@@ -298,4 +298,4 @@ class _ConfettiExplosionState extends State<ConfettiExplosion>
       ],
     );
   }
-} 
+}

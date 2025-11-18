@@ -54,9 +54,24 @@ class TypeFilter extends StatelessWidget {
               spacing: 6,
               runSpacing: 6,
               children: [
-                'fire', 'water', 'grass', 'electric', 'psychic', 'ice',
-                'dragon', 'dark', 'fairy', 'fighting', 'flying', 'poison',
-                'ground', 'rock', 'bug', 'ghost', 'steel', 'normal'
+                'fire',
+                'water',
+                'grass',
+                'electric',
+                'psychic',
+                'ice',
+                'dragon',
+                'dark',
+                'fairy',
+                'fighting',
+                'flying',
+                'poison',
+                'ground',
+                'rock',
+                'bug',
+                'ghost',
+                'steel',
+                'normal'
               ].map((type) {
                 bool isSelected = selectedTypes[type] ?? false;
                 return FilterChip(
@@ -65,7 +80,8 @@ class TypeFilter extends StatelessWidget {
                     type.toUpperCase(),
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.black87,
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight:
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                       fontSize: 11,
                     ),
                   ),
@@ -140,9 +156,13 @@ class GenerationFilter extends StatelessWidget {
                 label: Text(
                   'Gen $generation',
                   style: TextStyle(
-                    color: selectedGeneration == generation ? Colors.white : Colors.black87,
+                    color: selectedGeneration == generation
+                        ? Colors.white
+                        : Colors.black87,
                     fontSize: 11,
-                    fontWeight: selectedGeneration == generation ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: selectedGeneration == generation
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 ),
                 selectedColor: Colors.red[700],
@@ -231,7 +251,8 @@ class _HeightRangeFilterState extends State<HeightRangeFilter> {
                   setState(() => _currentRange = const RangeValues(0, 20));
                   widget.onHeightRangeChanged(const RangeValues(0, 20));
                 },
-                child: Text('Limpar', style: TextStyle(color: Colors.red[700], fontSize: 12)),
+                child: Text('Limpar',
+                    style: TextStyle(color: Colors.red[700], fontSize: 12)),
               ),
           ],
         ),
@@ -249,20 +270,24 @@ class _HeightRangeFilterState extends State<HeightRangeFilter> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildMiniBadge('Min: ${_currentRange.start.toStringAsFixed(1)}'),
-                    _buildMiniBadge('Max: ${_currentRange.end.toStringAsFixed(1)}'),
+                    _buildMiniBadge(
+                        'Min: ${_currentRange.start.toStringAsFixed(1)}'),
+                    _buildMiniBadge(
+                        'Max: ${_currentRange.end.toStringAsFixed(1)}'),
                   ],
                 ),
                 const SizedBox(height: 4),
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 12),
                     activeTrackColor: Colors.red[700],
                     inactiveTrackColor: Colors.red[100],
                     thumbColor: Colors.red[700],
-                    overlayColor: Colors.red[700]?.withOpacity(0.2),
+                    overlayColor: Colors.red[700]?.withValues(alpha: 0.2),
                   ),
                   child: RangeSlider(
                     values: _currentRange,
@@ -279,8 +304,10 @@ class _HeightRangeFilterState extends State<HeightRangeFilter> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('0', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
-                    Text('20', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('0',
+                        style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('20',
+                        style: TextStyle(fontSize: 9, color: Colors.grey[600])),
                   ],
                 ),
               ],
@@ -300,7 +327,8 @@ class _HeightRangeFilterState extends State<HeightRangeFilter> {
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -362,7 +390,8 @@ class _WeightRangeFilterState extends State<WeightRangeFilter> {
                   setState(() => _currentRange = const RangeValues(0, 1000));
                   widget.onWeightRangeChanged(const RangeValues(0, 1000));
                 },
-                child: Text('Limpar', style: TextStyle(color: Colors.red[700], fontSize: 12)),
+                child: Text('Limpar',
+                    style: TextStyle(color: Colors.red[700], fontSize: 12)),
               ),
           ],
         ),
@@ -388,12 +417,14 @@ class _WeightRangeFilterState extends State<WeightRangeFilter> {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 12),
                     activeTrackColor: Colors.red[700],
                     inactiveTrackColor: Colors.red[100],
                     thumbColor: Colors.red[700],
-                    overlayColor: Colors.red[700]?.withOpacity(0.2),
+                    overlayColor: Colors.red[700]?.withValues(alpha: 0.2),
                   ),
                   child: RangeSlider(
                     values: _currentRange,
@@ -410,8 +441,10 @@ class _WeightRangeFilterState extends State<WeightRangeFilter> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('0', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
-                    Text('1000', style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('0',
+                        style: TextStyle(fontSize: 9, color: Colors.grey[600])),
+                    Text('1000',
+                        style: TextStyle(fontSize: 9, color: Colors.grey[600])),
                   ],
                 ),
               ],
@@ -431,7 +464,8 @@ class _WeightRangeFilterState extends State<WeightRangeFilter> {
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+            color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -455,9 +489,9 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
 
   void _onRangeChanged(RangeValues values) {
     setState(() => _currentRange = values);
-    
+
     if (_debounce?.isActive ?? false) _debounce?.cancel();
-    
+
     _debounce = Timer(const Duration(milliseconds: 500), () {
       widget.onPowerRangeChanged(values);
     });
@@ -511,7 +545,8 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: Colors.red[700],
                         borderRadius: BorderRadius.circular(3),
@@ -526,7 +561,8 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
                       ),
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: Colors.red[700],
                         borderRadius: BorderRadius.circular(3),
@@ -546,12 +582,14 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
                 SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                    thumbShape:
+                        const RoundSliderThumbShape(enabledThumbRadius: 6),
+                    overlayShape:
+                        const RoundSliderOverlayShape(overlayRadius: 12),
                     activeTrackColor: Colors.red[700],
                     inactiveTrackColor: Colors.red[100],
                     thumbColor: Colors.red[700],
-                    overlayColor: Colors.red[700]?.withOpacity(0.2),
+                    overlayColor: Colors.red[700]?.withValues(alpha: 0.2),
                   ),
                   child: RangeSlider(
                     values: _currentRange,
@@ -591,4 +629,4 @@ class _PowerRangeFilterState extends State<PowerRangeFilter> {
       ],
     );
   }
-} 
+}

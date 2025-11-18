@@ -22,7 +22,8 @@ class StatComparisonBar extends StatefulWidget {
   State<StatComparisonBar> createState() => _StatComparisonBarState();
 }
 
-class _StatComparisonBarState extends State<StatComparisonBar> with SingleTickerProviderStateMixin {
+class _StatComparisonBarState extends State<StatComparisonBar>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
 
@@ -53,8 +54,14 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
     final percentage1 = widget.value1 / widget.maxValue;
     final percentage2 = widget.value2 / widget.maxValue;
 
-    final color1 = widget.color1 ?? (better == 1 ? Colors.green : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
-    final color2 = widget.color2 ?? (better == 2 ? Colors.green : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
+    final color1 = widget.color1 ??
+        (better == 1
+            ? Colors.green
+            : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
+    final color2 = widget.color2 ??
+        (better == 2
+            ? Colors.green
+            : (better == 0 ? Colors.grey[600]! : Colors.red[700]!));
 
     return AnimatedBuilder(
       animation: _animation,
@@ -116,7 +123,7 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
                   color: Colors.grey[200],
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.1),
+                      color: Colors.black.withValues(alpha: 0.1),
                       blurRadius: 4,
                       offset: const Offset(0, 2),
                     ),
@@ -173,7 +180,7 @@ class _StatComparisonBarState extends State<StatComparisonBar> with SingleTicker
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
-                  color.withOpacity(0.7),
+                  color.withValues(alpha: 0.7),
                   color,
                 ],
                 begin: isLeft ? Alignment.centerRight : Alignment.centerLeft,
@@ -210,7 +217,7 @@ class _SparklesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = color.withOpacity(0.4)
+      ..color = color.withValues(alpha: 0.4)
       ..style = PaintingStyle.fill;
 
     final sparkleSize = size.height * 0.4;
@@ -219,7 +226,7 @@ class _SparklesPainter extends CustomPainter {
     for (var i = 0; i < numberOfSparkles; i++) {
       final x = i * sparkleSize * 2 + (progress * size.width);
       final y = size.height / 2;
-      
+
       final path = Path()
         ..moveTo(x, y - sparkleSize / 2)
         ..lineTo(x + sparkleSize / 2, y)

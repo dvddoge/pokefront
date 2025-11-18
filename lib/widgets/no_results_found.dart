@@ -25,7 +25,7 @@ class NoResultsFound extends StatelessWidget {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.red.withOpacity(0.2),
+                    color: Colors.red.withValues(alpha: 0.2),
                     blurRadius: 20,
                     spreadRadius: 5,
                   ),
@@ -37,7 +37,7 @@ class NoResultsFound extends StatelessWidget {
                   CustomPaint(
                     size: const Size(150, 150),
                     painter: PokeballPainter(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                     ),
                   ),
                   Icon(
@@ -101,4 +101,4 @@ class NoResultsFound extends StatelessWidget {
       ),
     );
   }
-} 
+}
