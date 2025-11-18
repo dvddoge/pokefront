@@ -8,25 +8,20 @@ import 'pokemon_cache_service.dart';
 
 class PokemonListService {
   static const int pageSize = 20;
-  final Map<int, Map<String, int>> _statsCache = {};
-  final Map<int, Pokemon> _pokemonCache = {};
-  final Map<String, List<Pokemon>> _searchCache = {};
 
   // Método para limpar todos os caches
   void clearAllCaches() {
-    _statsCache.clear();
-    _pokemonCache.clear();
-    _searchCache.clear();
-    print(
-        'Cache legado limpo: ${_pokemonCache.length} Pokémon, ${_statsCache.length} stats, ${_searchCache.length} buscas');
+    // O cache principal agora é gerenciado pelo PokemonCacheService
+    // Este método é mantido para compatibilidade, mas o Hive já tem seu próprio clear
+    print('Solicitação de limpeza de cache legado (agora unificado)');
   }
 
-  // Getter para estatísticas do cache legado
+  // Getter para estatísticas do cache legado (agora retorna zeros ou dados do Hive se preferir)
   Map<String, int> getLegacyCacheStats() {
     return {
-      'pokemon_count': _pokemonCache.length,
-      'stats_count': _statsCache.length,
-      'search_count': _searchCache.length,
+      'pokemon_count': 0,
+      'stats_count': 0,
+      'search_count': 0,
     };
   }
 
@@ -53,10 +48,6 @@ class PokemonListService {
         (powerRange != null && powerRange != defaultPowerRange) ||
         (effectiveHeightRange != defaultHeightRange) ||
         (effectiveWeightRange != defaultWeightRange);
-
-    // Verificar se há filtro de poder ativo
-    bool hasPowerFilter =
-        powerRange != null && powerRange != defaultPowerRange;
 
     try {
       // Inicializar cache inteligente
@@ -168,16 +159,20 @@ class PokemonListService {
       if (powerRange != null && powerRange != defaultPowerRange) {
         await _ensureStatsForFilter(fetchedPokemons, powerRange);
       }
-      _primeStatsCacheForPokemons(fetchedPokemons);
 
       if (hasActiveFilters) {
         finalPokemonList = fetchedPokemons.where((pokemon) {
+          // Recuperar stats do cache para o filtro
+          final stats = PokemonCacheService.getStats(pokemon.id);
+          final statsMap =
+              stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
           return PokemonFilterService.shouldIncludePokemon(
             pokemon: pokemon,
             selectedTypes: selectedTypes ?? {},
             selectedGeneration: selectedGeneration ?? 0,
             powerRange: powerRange ?? defaultPowerRange,
-            statsCache: _statsCache,
+            statsCache: statsMap,
             heightRange: heightRange,
             weightRange: weightRange,
           );
@@ -246,13 +241,17 @@ class PokemonListService {
       // Verificar se já temos dados em cache para aplicar outros filtros
       final cachedPokemon = PokemonCacheService.getPokemon(pokemonId);
       if (cachedPokemon != null) {
-        _primeStatsCacheEntry(pokemonId);
+        // Recuperar stats do cache para o filtro
+        final stats = PokemonCacheService.getStats(pokemonId);
+        final statsMap =
+            stats != null ? {pokemonId: stats} : <int, Map<String, int>>{};
+
         final include = PokemonFilterService.shouldIncludePokemon(
           pokemon: cachedPokemon,
           selectedTypes: effectiveTypes,
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: effectivePowerRange,
-          statsCache: _statsCache,
+          statsCache: statsMap,
           heightRange: heightRange,
           weightRange: weightRange,
         );
@@ -281,18 +280,23 @@ class PokemonListService {
       // Implementar lógica para buscar do cache inteligente
       final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
       if (allCachedPokemons.isEmpty) return [];
-      _primeStatsCacheForPokemons(allCachedPokemons);
+
       final effectiveTypes = selectedTypes ?? <String, bool>{};
       final effectivePowerRange = powerRange ?? const RangeValues(0, 1000);
 
       // Aplicar filtros
       final filteredPokemons = allCachedPokemons.where((pokemon) {
+        // Recuperar stats do cache para o filtro
+        final stats = PokemonCacheService.getStats(pokemon.id);
+        final statsMap =
+            stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: effectiveTypes,
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: effectivePowerRange,
-          statsCache: _statsCache,
+          statsCache: statsMap,
           heightRange: heightRange,
           weightRange: weightRange,
         );
@@ -327,17 +331,22 @@ class PokemonListService {
     try {
       final allCachedPokemons = PokemonCacheService.getAllCachedPokemons();
       if (allCachedPokemons.isEmpty) return 0;
-      _primeStatsCacheForPokemons(allCachedPokemons);
+
       final effectiveTypes = selectedTypes ?? <String, bool>{};
       final effectivePowerRange = powerRange ?? const RangeValues(0, 1000);
 
       final filteredPokemons = allCachedPokemons.where((pokemon) {
+        // Recuperar stats do cache para o filtro
+        final stats = PokemonCacheService.getStats(pokemon.id);
+        final statsMap =
+            stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: effectiveTypes,
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: effectivePowerRange,
-          statsCache: _statsCache,
+          statsCache: statsMap,
           heightRange: heightRange,
           weightRange: weightRange,
         );
@@ -364,11 +373,6 @@ class PokemonListService {
           return cachedPokemon;
         }
 
-        // Verificar cache legado
-        if (_pokemonCache.containsKey(pokemonId)) {
-          return _pokemonCache[pokemonId]!;
-        }
-
         final detailResponse = await http
             .get(Uri.parse(pokemonUrl))
             .timeout(const Duration(seconds: 10));
@@ -376,9 +380,6 @@ class PokemonListService {
         if (detailResponse.statusCode == 200) {
           final detailData = json.decode(detailResponse.body);
           final pokemonObj = Pokemon.fromDetailJson(detailData);
-
-          // Salvar no cache legado
-          _pokemonCache[pokemonId] = pokemonObj;
 
           // Salvar no cache inteligente
           await PokemonCacheService.setPokemon(pokemonObj);
@@ -401,28 +402,6 @@ class PokemonListService {
     }
   }
 
-  Map<String, int>? _primeStatsCacheEntry(int pokemonId) {
-    final existing = _statsCache[pokemonId];
-    if (existing != null && existing.isNotEmpty) {
-      return existing;
-    }
-
-    final cached = PokemonCacheService.getStats(pokemonId);
-    if (cached == null || cached.isEmpty) {
-      return null;
-    }
-
-    final snapshot = Map<String, int>.from(cached);
-    _statsCache[pokemonId] = snapshot;
-    return snapshot;
-  }
-
-  void _primeStatsCacheForPokemons(Iterable<Pokemon> pokemons) {
-    for (final pokemon in pokemons) {
-      _primeStatsCacheEntry(pokemon.id);
-    }
-  }
-
   // Função auxiliar para garantir que os stats necessários para o filtro de poder estejam no cache
   Future<void> _ensureStatsForFilter(
       List<Pokemon> pokemonsToFilter, RangeValues? powerRange) async {
@@ -432,11 +411,9 @@ class PokemonListService {
 
     List<Future<void>> statFutures = [];
     for (var pokemon in pokemonsToFilter) {
-      // Verificar cache inteligente primeiro, depois legado
-      if (!PokemonCacheService.hasStats(pokemon.id) &&
-          !_statsCache.containsKey(pokemon.id)) {
-        statFutures.add(fetchPokemonStats(
-            pokemon.id)); // fetchPokemonStats deve adicionar ao _statsCache
+      // Verificar cache inteligente
+      if (!PokemonCacheService.hasStats(pokemon.id)) {
+        statFutures.add(fetchPokemonStats(pokemon.id));
       }
     }
 
@@ -457,15 +434,9 @@ class PokemonListService {
     // Verificar cache inteligente primeiro
     final cachedStats = PokemonCacheService.getStats(pokemonId);
     if (cachedStats != null) {
-      final snapshot = Map<String, int>.from(cachedStats);
-      _statsCache[pokemonId] = snapshot;
-      return snapshot;
+      return Map<String, int>.from(cachedStats);
     }
 
-    if (_statsCache.containsKey(pokemonId)) {
-      // Retorna o valor do cache se já existir (pode ser null se falhou antes)
-      return _statsCache[pokemonId];
-    }
     try {
       print('Buscando stats para ID $pokemonId...');
       final response = await http
@@ -484,9 +455,6 @@ class PokemonListService {
         stats['total_power'] = totalPower;
         print('Stats para ID $pokemonId carregados. Poder total: $totalPower');
 
-        // Salvar no cache legado
-        _statsCache[pokemonId] = stats;
-
         // Salvar no cache inteligente
         await PokemonCacheService.setStats(pokemonId, stats);
 
@@ -494,21 +462,13 @@ class PokemonListService {
       } else {
         print(
             'Erro ao buscar stats para ID $pokemonId: ${response.statusCode}');
-        _statsCache[pokemonId] =
-            {}; // Armazena um mapa vazio para indicar falha
         return null;
       }
     } catch (e) {
       print('Erro na requisição de stats para ID $pokemonId: $e');
-      _statsCache[pokemonId] = {}; // Armazena um mapa vazio para indicar falha
       return null;
     }
   }
-
-  // Helper para verificar se um ID pertence à página atual (aproximado)
-  // bool _isPokemonOnPage(int pokemonId, int page, int pageSize) {
-// ... (manter a função se a limpeza de cache for usada)
-  // }
 
   // Método para criar um Pokémon padrão quando ocorre um erro
   Pokemon _createDefaultPokemon(int id, String name) {
@@ -563,16 +523,20 @@ class PokemonListService {
 
     final cachedResults = PokemonCacheService.searchPokemons(query);
     if (cachedResults.isNotEmpty) {
-      _primeStatsCacheForPokemons(cachedResults);
       final effectiveTypes = selectedTypes ?? <String, bool>{};
       final effectivePowerRange = powerRange ?? defaultPowerRange;
       final filteredResults = cachedResults.where((pokemon) {
+        // Recuperar stats do cache para o filtro
+        final stats = PokemonCacheService.getStats(pokemon.id);
+        final statsMap =
+            stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: effectiveTypes,
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: effectivePowerRange,
-          statsCache: _statsCache,
+          statsCache: statsMap,
           heightRange: heightRange,
           weightRange: weightRange,
         );
@@ -581,13 +545,6 @@ class PokemonListService {
       if (filteredResults.isNotEmpty) {
         return filteredResults;
       }
-    }
-
-    final cacheKey =
-        '${query}_${selectedTypes}_${selectedGeneration}_${powerRange?.start}_${powerRange?.end}_${heightRange?.start}_${heightRange?.end}_${weightRange?.start}_${weightRange?.end}';
-    if (_searchCache.containsKey(cacheKey)) {
-      print('Usando resultados em cache legado para: $query');
-      return _searchCache[cacheKey]!;
     }
 
     try {
@@ -623,10 +580,6 @@ class PokemonListService {
             return cachedPokemon;
           }
 
-          if (_pokemonCache.containsKey(pokemonId)) {
-            return _pokemonCache[pokemonId]!;
-          }
-
           final detailResponse = await http
               .get(Uri.parse(pokemonUrl))
               .timeout(const Duration(seconds: 10));
@@ -634,7 +587,6 @@ class PokemonListService {
           if (detailResponse.statusCode == 200) {
             final detailData = json.decode(detailResponse.body);
             final pokemonObj = Pokemon.fromDetailJson(detailData);
-            _pokemonCache[pokemonId] = pokemonObj;
             await PokemonCacheService.setPokemon(pokemonObj);
             return pokemonObj;
           } else {
@@ -666,23 +618,25 @@ class PokemonListService {
       }
 
       await _ensureStatsForFilter(pokemons, powerRange);
-      _primeStatsCacheForPokemons(pokemons);
 
       final postFilteredPokemons = pokemons.where((pokemon) {
+        // Recuperar stats do cache para o filtro
+        final stats = PokemonCacheService.getStats(pokemon.id);
+        final statsMap =
+            stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
         return PokemonFilterService.shouldIncludePokemon(
           pokemon: pokemon,
           selectedTypes: selectedTypes ?? {},
           selectedGeneration: selectedGeneration ?? 0,
           powerRange: powerRange ?? defaultPowerRange,
-          statsCache: _statsCache,
+          statsCache: statsMap,
           heightRange: heightRange,
           weightRange: weightRange,
         );
       }).toList();
 
       postFilteredPokemons.sort((a, b) => a.id.compareTo(b.id));
-
-      _searchCache[cacheKey] = postFilteredPokemons;
 
       print(
           'Busca por "$query" com filtros retornou ${postFilteredPokemons.length} Pokémon.');
@@ -718,14 +672,18 @@ class PokemonListService {
       return pokemons;
     }
 
-    _primeStatsCacheForPokemons(pokemons);
     return pokemons.where((pokemon) {
+      // Recuperar stats do cache para o filtro
+      final stats = PokemonCacheService.getStats(pokemon.id);
+      final statsMap =
+          stats != null ? {pokemon.id: stats} : <int, Map<String, int>>{};
+
       return PokemonFilterService.shouldIncludePokemon(
         pokemon: pokemon,
         selectedTypes: selectedTypes,
         selectedGeneration: selectedGeneration,
         powerRange: powerRange,
-        statsCache: _statsCache,
+        statsCache: statsMap,
         heightRange: heightRange,
         weightRange: weightRange,
       );

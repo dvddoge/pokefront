@@ -11,7 +11,7 @@ class CacheDebugWidget extends StatefulWidget {
 
 class _CacheDebugWidgetState extends State<CacheDebugWidget> {
   Map<String, dynamic> _cacheStats = {};
-  Map<String, int> _legacyCacheStats = {};
+
   bool _isLoading = false;
   final PokemonListService _pokemonListService = PokemonListService();
 
@@ -26,17 +26,16 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
   void _loadCacheStats() {
     setState(() {
       _cacheStats = PokemonCacheService.getCacheStatistics();
-      _legacyCacheStats = _pokemonListService.getLegacyCacheStats();
     });
   }
 
   Future<void> _clearCache() async {
     setState(() => _isLoading = true);
-    
+
     try {
       await PokemonCacheService.clearCache();
       _loadCacheStats();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -63,11 +62,11 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
 
   Future<void> _forceSave() async {
     setState(() => _isLoading = true);
-    
+
     try {
       await PokemonCacheService.forceSave();
       _loadCacheStats();
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -109,8 +108,8 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
                 Text(
                   'Cache Inteligente',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(width: 8),
                 _buildCacheStatusIndicator(),
@@ -126,29 +125,24 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
             Text(
               '🧠 Cache Inteligente',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue[700],
+                  ),
             ),
             _buildStatRow('Pokémon', '${_cacheStats['pokemon_count'] ?? 0}'),
             _buildStatRow('Stats', '${_cacheStats['stats_count'] ?? 0}'),
-            _buildStatRow('Índice de Busca', '${_cacheStats['search_index_size'] ?? 0} entradas'),
-            _buildStatRow('Taxa de Acerto', '${((_cacheStats['cache_hit_rate'] ?? 0) * 100).toStringAsFixed(1)}%'),
-            _buildStatRow('Uso de Memória', '${(_cacheStats['memory_usage_mb'] ?? 0).toStringAsFixed(2)} MB'),
-            _buildStatRow('Último Salvamento', '${_cacheStats['last_save_time'] ?? 'Nunca'}'),
-            _buildStatRow('Idade do Cache', '${_cacheStats['cache_age_hours'] ?? 0}h'),
-            _buildStatRow('Mais Acessado', '${_cacheStats['most_accessed_pokemon'] ?? 'Nenhum'}'),
-            const SizedBox(height: 12),
-            Text(
-              '⚡ Cache Legado',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: Colors.orange[700],
-              ),
-            ),
-            _buildStatRow('Pokémon', '${_legacyCacheStats['pokemon_count'] ?? 0}'),
-            _buildStatRow('Stats', '${_legacyCacheStats['stats_count'] ?? 0}'),
-            _buildStatRow('Buscas', '${_legacyCacheStats['search_count'] ?? 0}'),
+            _buildStatRow('Índice de Busca',
+                '${_cacheStats['search_index_size'] ?? 0} entradas'),
+            _buildStatRow('Taxa de Acerto',
+                '${((_cacheStats['cache_hit_rate'] ?? 0) * 100).toStringAsFixed(1)}%'),
+            _buildStatRow('Uso de Memória',
+                '${(_cacheStats['memory_usage_mb'] ?? 0).toStringAsFixed(2)} MB'),
+            _buildStatRow('Último Salvamento',
+                '${_cacheStats['last_save_time'] ?? 'Nunca'}'),
+            _buildStatRow(
+                'Idade do Cache', '${_cacheStats['cache_age_hours'] ?? 0}h'),
+            _buildStatRow('Mais Acessado',
+                '${_cacheStats['most_accessed_pokemon'] ?? 'Nenhum'}'),
             const SizedBox(height: 16),
             _buildCacheHealthIndicator(),
             const SizedBox(height: 16),
@@ -210,9 +204,9 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
           Text(
             value,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Colors.blue[700],
-            ),
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[700],
+                ),
           ),
         ],
       ),
@@ -224,7 +218,7 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
     final Color statusColor;
     final String statusText;
     final IconData statusIcon;
-    
+
     if (pokemonCount == 0) {
       statusColor = Colors.grey;
       statusText = 'Vazio';
@@ -242,7 +236,7 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
       statusText = 'Ótimo';
       statusIcon = Icons.check_circle;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -272,7 +266,7 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
     final pokemonCount = _cacheStats['pokemon_count'] ?? 0;
     final statsCount = _cacheStats['stats_count'] ?? 0;
     final searchIndexSize = _cacheStats['search_index_size'] ?? 0;
-    
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -286,40 +280,43 @@ class _CacheDebugWidgetState extends State<CacheDebugWidget> {
           Text(
             '📊 Saúde do Cache',
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 8),
           LinearProgressIndicator(
             value: (pokemonCount / 1000).clamp(0.0, 1.0),
             backgroundColor: Colors.grey[300],
             valueColor: AlwaysStoppedAnimation<Color>(
-              pokemonCount > 500 ? Colors.green : 
-              pokemonCount > 100 ? Colors.orange : Colors.red,
+              pokemonCount > 500
+                  ? Colors.green
+                  : pokemonCount > 100
+                      ? Colors.orange
+                      : Colors.red,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            'Progresso: $pokemonCount/1000 Pokémon (${(pokemonCount/10).toStringAsFixed(1)}%)',
+            'Progresso: $pokemonCount/1000 Pokémon (${(pokemonCount / 10).toStringAsFixed(1)}%)',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 8),
           Row(
             children: [
               _buildHealthBadge(
-                'Dados', 
+                'Dados',
                 pokemonCount > 0 ? 'OK' : 'Vazio',
                 pokemonCount > 0 ? Colors.green : Colors.grey,
               ),
               const SizedBox(width: 8),
               _buildHealthBadge(
-                'Stats', 
+                'Stats',
                 statsCount > 0 ? 'OK' : 'Vazio',
                 statsCount > 0 ? Colors.green : Colors.grey,
               ),
               const SizedBox(width: 8),
               _buildHealthBadge(
-                'Busca', 
+                'Busca',
                 searchIndexSize > 0 ? 'OK' : 'Vazio',
                 searchIndexSize > 0 ? Colors.green : Colors.grey,
               ),
